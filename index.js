@@ -53,6 +53,7 @@ async function handleGenerate(request, env) {
   const payload = {
     model: env.MODEL || "claude-3-5-sonnet-latest",
     max_tokens: 8000,
+    stream: true,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content }]
   };
@@ -71,8 +72,26 @@ async function handleGenerate(request, env) {
     const t = await r.text();
     return json({ error: "Erro da API do Claude (" + r.status + "): " + t.slice(0, 500) }, 502);
   }
-  const data = await r.json();
-  const text = (data.content || []).map(b => b.text || "").join("\n").trim();
+  let text = "";
+  const reader = r.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    buf += dec.decode(chunk.value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop();
+    for (const ln of lines) {
+      if (ln.startsWith("data: ")) {
+        try {
+          const ev = JSON.parse(ln.slice(6));
+          if (ev.type === "content_block_delta" && ev.delta && ev.delta.text) text += ev.delta.text;
+        } catch (e) {}
+      }
+    }
+  }
+  text = text.trim();
   return json({ result: text });
 }
 
