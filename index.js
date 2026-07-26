@@ -52,7 +52,7 @@ async function handleGenerate(request, env) {
 
   const payload = {
     model: env.MODEL || "claude-3-5-sonnet-latest",
-    max_tokens: 8000,
+    max_tokens: 16000,
     stream: true,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content }]
