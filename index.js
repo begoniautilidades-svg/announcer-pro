@@ -95,6 +95,45 @@ async function handleGenerate(request, env) {
   return json({ result: text });
 }
 
+async function handleImage(request, env) {
+  if (!env.OPENAI_API_KEY) {
+    return json({ error: "Falta configurar OPENAI_API_KEY no Cloudflare (Settings > Variables and Secrets). Crie a chave em platform.openai.com/api-keys." }, 500);
+  }
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "JSON invalido." }, 400); }
+  const prompt = String(body.prompt || "").slice(0, 4000);
+  if (!prompt) return json({ error: "Cole o prompt da imagem." }, 400);
+  let r;
+  if (body.imageBase64 && body.mediaType) {
+    const bin = Uint8Array.from(atob(body.imageBase64), c => c.charCodeAt(0));
+    const fd = new FormData();
+    fd.append("model", "gpt-image-1");
+    fd.append("prompt", prompt);
+    fd.append("size", "1024x1024");
+    fd.append("quality", env.IMAGE_QUALITY || "medium");
+    fd.append("image", new Blob([bin], { type: body.mediaType }), "referencia.png");
+    r = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { "authorization": "Bearer " + env.OPENAI_API_KEY },
+      body: fd
+    });
+  } else {
+    r = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: { "authorization": "Bearer " + env.OPENAI_API_KEY, "content-type": "application/json" },
+      body: JSON.stringify({ model: "gpt-image-1", prompt, size: "1024x1024", quality: env.IMAGE_QUALITY || "medium" })
+    });
+  }
+  if (!r.ok) {
+    const t = await r.text();
+    return json({ error: "Erro da API da OpenAI (" + r.status + "): " + t.slice(0, 500) }, 502);
+  }
+  const data = await r.json();
+  const b64 = data.data && data.data[0] && data.data[0].b64_json;
+  if (!b64) return json({ error: "Resposta sem imagem." }, 502);
+  return json({ image: b64 });
+}
+
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -107,6 +146,9 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/api/generate" && request.method === "POST") {
       return handleGenerate(request, env);
+    }
+    if (url.pathname === "/api/image" && request.method === "POST") {
+      return handleImage(request, env);
     }
     return new Response(HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
   }
@@ -174,6 +216,11 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
  <div class="card"><h2>7 · Canais e profundidade</h2>
   <label>Canais</label><div class="chips" id="canais" style="margin-bottom:12px"><div class="chip on" data-v="Mercado Livre">Mercado Livre</div><div class="chip" data-v="Shopee">Shopee</div><div class="chip" data-v="Amazon">Amazon</div><div class="chip" data-v="Magalu">Magalu</div><div class="chip" data-v="TikTok Shop">TikTok Shop</div><div class="chip" data-v="Google Shopping">Google Shopping</div></div>
   <label>Profundidade</label><div class="chips" id="prof"><div class="chip on" data-v="Pacote completo">Completo</div><div class="chip" data-v="Rápido">Rápido</div></div></div>
+ <div class="card"><h2>8 · Gerar imagem (motor do ChatGPT)</h2><p class="hint">Cole um dos 9 prompts gerados. Usa a foto importada como referência para manter o produto idêntico.</p>
+  <textarea id="iprompt" placeholder="Cole aqui o prompt da imagem..."></textarea>
+  <button class="btn btn-p" id="goimg" style="margin-top:8px">🎨 Gerar imagem</button>
+  <div class="spin" id="ispin">⏳ Gerando imagem… pode levar ~1 min.</div>
+  <div id="iout" style="display:none;margin-top:10px"><img id="iimg" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"><a id="idl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="imagem-anuncio.png">⬇️ Baixar imagem</a></div></div>
 </div>
 <div class="side"><div class="card"><h2>✨ Resultado</h2><p class="hint">Clique e o anúncio aparece aqui.</p>
  <button class="btn btn-p" id="go">Gerar anúncio</button>
@@ -210,5 +257,15 @@ document.getElementById('go').onclick=function(){
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
    if(j.result){document.getElementById('copy').style.display='block'}
  }).catch(function(e){btn.disabled=false;document.getElementById('spin').style.display='none';out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
+document.getElementById('goimg').onclick=function(){
+ var p=v('iprompt');if(!p){alert('Cole o prompt da imagem primeiro.');return}
+ var btn=this;btn.disabled=true;document.getElementById('ispin').style.display='block';document.getElementById('iout').style.display='none';
+ fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p,imageBase64:img?img.data:null,mediaType:img?img.media:null})})
+ .then(function(r){return r.json()}).then(function(j){
+  btn.disabled=false;document.getElementById('ispin').style.display='none';
+  if(j.image){var u='data:image/png;base64,'+j.image;document.getElementById('iimg').src=u;document.getElementById('idl').href=u;document.getElementById('iout').style.display='block'}
+  else{alert(j.error||'Erro desconhecido.')}
+ }).catch(function(e){btn.disabled=false;document.getElementById('ispin').style.display='none';alert('Falha de rede: '+e)});
+};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
 </script></body></html>`;
