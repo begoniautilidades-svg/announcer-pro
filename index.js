@@ -29,8 +29,8 @@ FORMATO DA ENTREGA (markdown), adaptando profundidade ao pedido:
 4. Descrição pronta pra colar (por canal)
 5. Bullets, FAQ, objeções tratadas, ficha técnica, conteúdo da embalagem, avisos
 6. Roteiro + prompts das 9 imagens
-7. (se pedido completo) roteiros de vídeo 15/30/60s e estratégia comercial
-8. Nota final 0–100 + plano de melhoria.`;
+7. Nota final 0–100 + plano de melhoria (sempre incluir, logo apos as imagens)
+8. (se pedido completo) roteiros de video 15/30/60s e estrategia comercial.`;
 
 async function handleGenerate(request, env) {
   if (!env.ANTHROPIC_API_KEY) {
