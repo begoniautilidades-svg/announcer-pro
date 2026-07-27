@@ -22,6 +22,8 @@ REGRAS POR CANAL:
 
 IMAGENS: entregue o roteiro de 9 artes com PROMPTS prontos pra IA. A capa é fundo branco puro, sem texto. Todo prompt manda usar a FOTO REAL do produto (em anexo, quando houver) como referência e manter o produto IDÊNTICO; formato 1:1, 1200x1200.
 
+REGRA DE ESCALA (obrigatoria em TODO prompt de imagem e de video que envolva refil, elemento filtrante, cartucho ou purificador de agua): o refil/elemento filtrante mede cerca de 22 cm de altura por 6,3 cm de diametro - do tamanho de uma garrafa de agua de 500 ml; cabe inteiro em uma mao, os dedos se fecham em volta dele e o polegar quase encosta na ponta dos dedos; ocupa cerca de um quinto da altura do tronco de um adulto. O purificador de bancada mede cerca de 43 cm de altura por 33 cm de largura por 35 cm de profundidade - do tamanho de um micro-ondas pequeno; quando aparecer, aparece INTEIRO no enquadramento, apoiado sobre a bancada, ao lado da pessoa e na MESMA distancia da camera. PROPORCAO FIXA: a altura do purificador e o DOBRO da altura do refil. Se o refil parecer maior que metade do purificador, o prompt esta errado. Escreva sempre esses numeros dentro do prompt, uma unica fotografia real (lente 50 mm, mesma luz e mesma profundidade para pessoa e produtos), sem colagem e sem montagem.
+
 IDENTIDADE VISUAL SAYONARA (obrigatoria em TODA imagem e video): paleta oficial ciano #2FD4E0, azul #2F64E0 e azul medio #2E9CE0, sempre sobre fundos brancos ou claros; clima visual clean e premium remetendo a agua, pureza e lar (cozinhas claras, luz natural suave, tons azuis); tipografia Montserrat quando houver texto em artes secundarias (capa sempre sem texto); logo da marca = gota d'agua com telhado de casa, slogan "onde a pureza encontra seu lar". Todo prompt de imagem e de video gerado DEVE citar essa paleta e esse clima visual.
 
 FORMATO DA ENTREGA (markdown), adaptando profundidade ao pedido:
@@ -638,11 +640,14 @@ function vRender(){vth.innerHTML=vimgs.map(function(o,i){return '<div class="thu
 vin.onchange=function(){[].forEach.call(vin.files,function(f){if(vimgs.length>=4)return;var r=new FileReader();r.onload=function(){vimgs.push({data:r.result.split(',')[1],media:f.type,url:r.result});vRender()};r.readAsDataURL(f)});vin.value='';};
 vth.onclick=function(e){if(e.target.dataset&&e.target.dataset.x!==undefined&&e.target.dataset.x!==''){vimgs.splice(Number(e.target.dataset.x),1);vRender()}};
 function refLista(){var a=vimgs.length?vimgs:imgs;return a.slice(0,4).map(function(o){return{data:o.data,media:o.media}})}
-function escala(p){var n=refLista().length;if(!n)return p;
+function regraRefil(p){var nm=((v('nome')||'')+' '+(v('cat')||'')+' '+(p||'')).toLowerCase();
+ if(nm.indexOf('refil')<0&&nm.indexOf('purificador')<0&&nm.indexOf('elemento filtrante')<0&&nm.indexOf('cartucho')<0)return '';
+ return ' ESCALA REAL OBRIGATORIA: o refil/elemento filtrante mede 22 cm de altura por 6,3 cm de diametro - do tamanho de uma garrafa de agua de 500 ml; cabe inteiro em uma mao, os dedos se fecham em volta do corpo dele e o polegar quase encosta na ponta dos dedos; ocupa cerca de um quinto da altura do tronco da pessoa. O purificador de bancada mede 43 cm de altura por 33 cm de largura por 35 cm de profundidade - do tamanho de um micro-ondas pequeno; quando aparecer, aparece INTEIRO no enquadramento, apoiado sobre a bancada, ao lado da pessoa e na MESMA distancia da camera. PROPORCAO FIXA: a altura do purificador e o DOBRO da altura do refil. Se o refil parecer maior que metade do purificador, esta errado. Uma unica fotografia real, lente 50 mm, mesma luz e mesma profundidade para pessoa e produtos, sem colagem.'}
+function escala(p){var n=refLista().length,rr=regraRefil(p);if(!n)return p+rr;
  var t=p+' FIDELIDADE AO PRODUTO: reproduza o(s) produto(s) EXATAMENTE como nas fotos de referencia - mesmo formato, mesmas cores, mesma marca e mesmos textos do rotulo (nao invente nem distorca letras).';
- if(n>1)t+=' Sao '+n+' produtos diferentes nas referencias: respeite o TAMANHO REAL e a PROPORCAO entre eles (o refil/cartucho e bem menor que o purificador, cabe na mao). Nunca aumente o item menor nem encolha o maior.';
+ if(n>1)t+=' Sao '+n+' produtos diferentes nas referencias: respeite o TAMANHO REAL e a PROPORCAO entre eles. Nunca aumente o item menor nem encolha o maior.';
  else t+=' Mantenha a escala real do produto em relacao a pessoa e ao ambiente.';
- return t}
+ return t+rr}
 function refVideo(cb){var ref=vimgs[0]||imgs[0];if(!ref){cb(null);return}var dims=v('vsize')==='1280x720'?[1280,720]:[720,1280];var im=new Image();im.onload=function(){var c=document.createElement('canvas');c.width=dims[0];c.height=dims[1];var x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);var e=Math.min(c.width/im.width,c.height/im.height);var nw=im.width*e,nh=im.height*e;x.drawImage(im,(c.width-nw)/2,(c.height-nh)/2,nw,nh);cb(c.toDataURL('image/png').split(',')[1])};im.onerror=function(){cb(null)};im.src=ref.url}
 document.getElementById('govid').onclick=function(){
  var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
