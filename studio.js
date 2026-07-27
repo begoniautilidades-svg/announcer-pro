@@ -1,0 +1,212 @@
+/**
+ * STUDIO DONA BEGÔ — módulo separado do ANNOUNCER PRO.
+ * Etapa 1: página com a identidade da marca, ponte de entrada vinda do
+ * ANNOUNCER PRO (localStorage "db_studio_entrada") e o contrato de medidas.
+ * As etapas 2 a 6 entram nas próximas publicações.
+ */
+import { LOGO_HORIZ, LOGO_SIMBOLO, MARCA_CSS } from "./marca.js";
+
+export const STUDIO_HTML = String.raw`<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STUDIO DONA BEGÔ</title>
+<link rel="icon" href="` + LOGO_SIMBOLO + String.raw`">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>` + MARCA_CSS + String.raw`
+*{box-sizing:border-box}
+body{margin:0;background:var(--db-fundo);color:var(--db-tinta);font-family:var(--db-fonte);padding-bottom:60px}
+header{background:var(--db-branco);border-bottom:1px solid var(--db-linha);padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:9}
+header img{height:38px}
+.pill{background:var(--db-rosa);color:#fff;font-weight:800;font-size:.72rem;letter-spacing:.16em;padding:6px 12px;border-radius:99px}
+header a{margin-left:auto;color:var(--db-cinza);text-decoration:none;font-size:.85rem;font-weight:600}
+header a:hover{color:var(--db-rosa-texto)}
+.wrap{max-width:1080px;margin:0 auto;padding:22px 18px}
+.card{background:var(--db-branco);border:1px solid var(--db-linha);border-radius:var(--db-raio);padding:20px;margin-bottom:16px}
+h1{font-size:1.5rem;font-weight:800;margin:0 0 6px}
+h2{font-size:1.02rem;font-weight:800;margin:0 0 10px;color:var(--db-tinta)}
+p{line-height:1.6;color:var(--db-cinza);margin:0 0 10px;font-size:.92rem}
+.lead{font-size:1rem;color:var(--db-cinza)}
+label{display:block;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--db-cinza);margin:0 0 5px}
+input,textarea,select{width:100%;padding:10px 12px;border:1px solid var(--db-linha);border-radius:10px;font-family:inherit;font-size:.95rem;color:var(--db-tinta);background:#fff}
+input:focus,textarea:focus{outline:2px solid var(--db-rosa);outline-offset:-1px;border-color:var(--db-rosa)}
+textarea{min-height:110px;resize:vertical;line-height:1.5}
+.field{margin-bottom:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:640px){.g2,.g3{grid-template-columns:1fr}}
+.btn{display:block;width:100%;padding:12px;border:0;border-radius:10px;font-family:inherit;font-size:.95rem;font-weight:600;cursor:pointer;margin-top:8px}
+.btn-p{background:var(--db-rosa);color:#fff}
+.btn-p:hover{background:var(--db-rosa-texto)}
+.btn-p:active{background:var(--db-rosa-escuro)}
+.btn-g{background:#fff;color:var(--db-cinza-forte);border:1px solid var(--db-linha)}
+.btn-g:hover{border-color:var(--db-rosa);color:var(--db-rosa-texto)}
+.aviso{background:var(--db-rosa-nevoa);border:1px solid var(--db-rosa-claro);border-left:4px solid var(--db-rosa);border-radius:10px;padding:12px 14px;font-size:.88rem;color:var(--db-cinza-forte);line-height:1.55}
+.ok{background:#F1F7F1;border:1px solid #D6E8D6;border-left:4px solid #3E8E41}
+.saida{background:var(--db-fundo);border:1px solid var(--db-linha);border-radius:10px;padding:14px;font-size:.92rem;line-height:1.65;color:var(--db-tinta);white-space:pre-wrap}
+.passos{list-style:none;margin:0;padding:0;counter-reset:p}
+.passos li{position:relative;padding:11px 0 11px 44px;border-bottom:1px solid var(--db-linha);font-size:.92rem;color:var(--db-cinza)}
+.passos li:last-child{border-bottom:0}
+.passos li:before{counter-increment:p;content:counter(p);position:absolute;left:0;top:9px;width:28px;height:28px;border-radius:50%;background:var(--db-fundo);color:var(--db-cinza);font-size:.78rem;font-weight:800;display:flex;align-items:center;justify-content:center;border:1px solid var(--db-linha)}
+.passos li.feito:before{background:var(--db-rosa);color:#fff;border-color:var(--db-rosa)}
+.passos li strong{color:var(--db-tinta);font-weight:600}
+.tag{display:inline-block;font-size:.68rem;font-weight:800;letter-spacing:.08em;padding:3px 8px;border-radius:99px;margin-left:6px;vertical-align:1px}
+.t-gate{background:var(--db-rosa-claro);color:var(--db-rosa-escuro)}
+.t-agora{background:var(--db-rosa);color:#fff}
+.t-prox{background:var(--db-fundo);color:var(--db-cinza);border:1px solid var(--db-linha)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:1px solid var(--db-linha);border-radius:99px;padding:6px 12px;font-size:.82rem;cursor:pointer;background:#fff;color:var(--db-cinza)}
+.chip.on{background:var(--db-rosa);border-color:var(--db-rosa);color:#fff;font-weight:600}
+.foot{text-align:center;font-size:.78rem;color:var(--db-cinza);padding:8px 18px}
+</style></head><body>
+<header>
+ <img src="` + LOGO_HORIZ + String.raw`" alt="Dona Begô Utilidades">
+ <span class="pill">STUDIO</span>
+ <a href="/">← voltar ao ANNOUNCER PRO</a>
+</header>
+<div class="wrap">
+
+ <div class="card">
+  <h1>Studio de conteúdo</h1>
+  <p class="lead">Aqui o anúncio vira roteiro, o roteiro vira cena e a cena vira imagem ou vídeo — com as suas fotos reais e as medidas reais do produto. Cada passo caro só acontece depois que você aprova.</p>
+ </div>
+
+ <div class="card">
+  <h2>Entrada — o que chegou do ANNOUNCER PRO</h2>
+  <div id="entrada"></div>
+ </div>
+
+ <div class="card">
+  <h2>Contrato de medidas</h2>
+  <p>É aqui que se resolve o erro que mais aparece: o refil sair do tamanho do purificador. A IA não entende centímetro — ela entende comparação escrita. Preencha as alturas reais e copie a frase pronta para dentro de qualquer prompt de imagem ou de vídeo. A ordem não importa: eu descubro sozinho qual é o maior.</p>
+  <div class="g2">
+   <div>
+    <div class="field"><label>Produto A</label><input id="mA" placeholder="Purificador IBBL FR600"></div>
+    <div class="g3">
+     <div class="field"><label>Altura cm</label><input id="hA" inputmode="decimal" placeholder="43"></div>
+     <div class="field"><label>Largura cm</label><input id="wA" inputmode="decimal" placeholder="33"></div>
+     <div class="field"><label>Prof. cm</label><input id="dA" inputmode="decimal" placeholder="35"></div>
+    </div>
+   </div>
+   <div>
+    <div class="field"><label>Produto B</label><input id="mB" placeholder="Refil SAYO S+3"></div>
+    <div class="g3">
+     <div class="field"><label>Altura cm</label><input id="hB" inputmode="decimal" placeholder="22"></div>
+     <div class="field"><label>Diâm./Larg. cm</label><input id="wB" inputmode="decimal" placeholder="6.3"></div>
+     <div class="field"><label>Prof. cm</label><input id="dB" inputmode="decimal" placeholder=""></div>
+    </div>
+   </div>
+  </div>
+  <button class="btn btn-p" id="calc">Gerar a frase de escala</button>
+  <div id="escOut" style="display:none;margin-top:12px">
+   <div class="saida" id="escTxt"></div>
+   <button class="btn btn-g" id="escCopy">Copiar a frase</button>
+  </div>
+ </div>
+
+ <div class="card">
+  <h2>O caminho até o vídeo</h2>
+  <p>Dez passos e quatro paradas obrigatórias. Nas paradas eu não sigo sozinho: eu pergunto e espero você responder.</p>
+  <ol class="passos">
+   <li class="feito"><strong>Receber o anúncio</strong> do ANNOUNCER PRO<span class="tag t-agora">no ar</span></li>
+   <li class="feito"><strong>Contrato de medidas</strong> — a proporção escrita por extenso<span class="tag t-agora">no ar</span></li>
+   <li><strong>Ficha do produto</strong> — fotos reais e dados do SKU<span class="tag t-prox">etapa 2</span></li>
+   <li><strong>Conferir as fotos</strong> — frente inteira, rótulo legível, encaixe, escala<span class="tag t-gate">parada 1</span></li>
+   <li><strong>Roteiro</strong> do vídeo, no tom da Dona Begô<span class="tag t-prox">etapa 3</span></li>
+   <li><strong>Aprovar o roteiro</strong> antes de virar cena<span class="tag t-gate">parada 2</span></li>
+   <li><strong>Cenas e prompts</strong> com a proporção escrita dentro<span class="tag t-prox">etapa 3</span></li>
+   <li><strong>Quadro-chave</strong> — uma imagem de ~R$ 0,20 antes do vídeo de ~R$ 6,60<span class="tag t-gate">parada 3</span></li>
+   <li><strong>Gerar o vídeo</strong> só com o quadro aprovado como referência<span class="tag t-gate">parada 4</span></li>
+   <li><strong>Arquivar</strong> na pasta do SKU<span class="tag t-prox">etapa 6</span></li>
+  </ol>
+ </div>
+
+ <div class="card">
+  <h2>Regras que valem em todo passo</h2>
+  <p><strong>Nunca inventar um produto.</strong> Se a foto real não mostra, não entra na imagem. Sem rótulo inventado, sem botão que não existe, sem cor que o produto não tem.</p>
+  <p><strong>Sem rosto humano na referência.</strong> A API do vídeo recusa foto de referência com rosto. Mãos podem.</p>
+  <p><strong>O logo não vai na foto de capa.</strong> Mercado Livre e Amazon proíbem marca e selo na primeira foto — isso derruba o anúncio. O logo entra nas fotos secundárias e no vídeo.</p>
+ </div>
+
+ <div class="foot">STUDIO DONA BEGÔ · etapa 1 · o conteúdo pago só roda depois da sua aprovação</div>
+</div>
+<script>
+function q(i){return document.getElementById(i)}
+function num(i){var t=(q(i).value||'').replace(',','.').replace(/[^0-9.]/g,'');var n=parseFloat(t);return isFinite(n)&&n>0?n:0}
+
+/* ---- entrada vinda do ANNOUNCER PRO ---- */
+(function(){
+ var box=q('entrada'),d=null;
+ try{var raw=localStorage.getItem('db_studio_entrada');if(raw)d=JSON.parse(raw)}catch(e){}
+ if(!d||!d.nome&&!d.cenas){
+  box.innerHTML='<div class="aviso">Nada chegou ainda. Abra o <strong>ANNOUNCER PRO</strong>, gere o anúncio e clique em <strong>Enviar para o STUDIO</strong>. O produto, as medidas e as cenas vêm junto e caem aqui.</div>';
+  return}
+ var h='<div class="aviso ok"><strong>'+esc(d.nome||'Produto sem nome')+'</strong>';
+ if(d.marca)h+=' · '+esc(d.marca);
+ if(d.medidas)h+='<br>Medidas informadas: '+esc(d.medidas);
+ if(d.compat&&d.compatCom)h+='<br>Compatível com: '+esc(d.compatCom);
+ if(d.quando)h+='<br><span style="color:var(--db-cinza)">Enviado em '+esc(d.quando)+'</span>';
+ h+='</div>';
+ var cen=d.cenas||[],img=d.imagens||[];
+ if(cen.length||img.length){
+  h+='<p style="margin-top:12px">Chegaram <strong>'+cen.length+'</strong> cena(s) de vídeo e <strong>'+img.length+'</strong> prompt(s) de imagem. Clique para ler.</p><div class="chips" id="ec"></div><textarea id="etxt" style="margin-top:10px" readonly></textarea>';
+ }
+ box.innerHTML=h;
+ if(cen.length||img.length){
+  var ec=q('ec'),lista=[];
+  cen.forEach(function(c,i){lista.push({r:'Cena '+(i+1)+(c.seg?' ('+c.seg+'s)':''),p:c.prompt||''})});
+  img.forEach(function(p,i){lista.push({r:'Imagem '+(i+1),p:p})});
+  lista.forEach(function(o,i){var el=document.createElement('div');el.className='chip';el.textContent=o.r;
+   el.onclick=function(){q('etxt').value=o.p;[].forEach.call(ec.children,function(x){x.classList.remove('on')});el.classList.add('on')};
+   ec.appendChild(el)});
+  ec.children[0].click();
+ }
+ if(d.medidas){var m=(''+d.medidas).replace(',','.').match(/[0-9]+(\.[0-9]+)?/g);
+  if(m&&m.length>=1&&!q('hA').value){q('hA').value=m[0];if(m[1])q('wA').value=m[1];if(m[2])q('dA').value=m[2];q('mA').value=d.nome||''}}
+})();
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+/* ---- contrato de medidas ---- */
+function porExtenso(n){
+ var t=[['igual à altura',1],['uma vez e meia a altura',1.5],['o dobro da altura',2],['duas vezes e meia a altura',2.5],['o triplo da altura',3],['o quádruplo da altura',4]];
+ for(var i=0;i<t.length;i++){if(Math.abs(n-t[i][1])<0.03)return t[i][0]}
+ return n.toFixed(2).replace('.',',')+' vezes a altura'}
+function comparar(cm){
+ if(cm<=8)return 'cabe fechado dentro de uma mão';
+ if(cm<=15)return 'do tamanho de um copo americano';
+ if(cm<=25)return 'do tamanho de uma garrafa de água de 500 ml';
+ if(cm<=40)return 'do tamanho de uma caixa de leite em pé, mais alto que uma garrafa';
+ if(cm<=60)return 'do tamanho de um micro-ondas pequeno';
+ return 'do tamanho de uma criança pequena em pé'}
+q('calc').onclick=function(){
+ var A={n:q('mA').value.trim(),h:num('hA'),w:num('wA'),d:num('dA')}, B={n:q('mB').value.trim(),h:num('hB'),w:num('wB'),d:num('dB')};
+ if(!A.h||!B.h){alert('Preencha a altura em cm dos dois produtos.');return}
+ if(B.h>A.h){var t=A;A=B;B=t}
+ var nA=A.n||'produto maior', nB=B.n||'produto menor';
+ var r=A.h/B.h;
+ var s='REGRA DE ESCALA (obrigatória nesta cena, escreva do jeito que está aqui):\n\n';
+ s+='O '+nA+' mede '+fmt(A.h)+' cm de altura';
+ if(A.w)s+=' por '+fmt(A.w)+' cm de largura';
+ if(A.d)s+=' por '+fmt(A.d)+' cm de profundidade';
+ s+=' — é '+comparar(A.h)+'. ';
+ s+='O '+nB+' mede '+fmt(B.h)+' cm de altura';
+ if(B.w)s+=' por '+fmt(B.w)+' cm de '+(B.d?'largura':'diâmetro');
+ if(B.d)s+=' por '+fmt(B.d)+' cm de profundidade';
+ s+=' — é '+comparar(B.h)+'.\n\n';
+ s+='PROPORÇÃO FIXA: a altura do '+nA+' é '+porExtenso(r)+' do '+nB+'. ';
+ s+='Dito de outro jeito: o '+nB+' ocupa cerca de '+Math.round(100/r)+'% da altura do '+nA+'. ';
+ s+='Se na imagem o '+nB+' parecer maior que isso, a imagem está errada e precisa ser refeita.\n\n';
+ s+='Os dois produtos aparecem INTEIROS no enquadramento, apoiados na mesma superfície, à MESMA distância da câmera, em uma única fotografia real com lente 50 mm, mesma luz e mesma profundidade de campo. Sem colagem, sem montagem, sem foto dentro de foto.';
+ q('escTxt').textContent=s;
+ q('escOut').style.display='block';
+ q('escOut').scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+function fmt(n){return (Math.round(n*10)/10).toString().replace('.',',')}
+q('escCopy').onclick=function(){
+ var t=q('escTxt').textContent,b=this;
+ function done(){b.textContent='Copiado';setTimeout(function(){b.textContent='Copiar a frase'},1600)}
+ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,fallback)}else{fallback()}
+ function fallback(){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(a);done()}
+};
+</script></body></html>`;
