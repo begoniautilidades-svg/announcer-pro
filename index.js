@@ -32,7 +32,7 @@ FORMATO DA ENTREGA (markdown), adaptando profundidade ao pedido:
 5. Bullets, FAQ, objeções tratadas, ficha técnica, conteúdo da embalagem, avisos
 6. CONTEUDO A+ DA AMAZON pronto pra colar (padrao dos melhores vendedores: modulo hero com headline forte, 3 modulos de beneficio com titulo curto + texto + sugestao de imagem, tabela comparativa com modelos da linha, FAQ visual) E CONTEUDO ADICIONAL DO CATALOGO ML (rich content: blocos de texto persuasivo + sugestoes de banner), ambos seguindo as praticas dos anuncios campeoes da categoria
 7. Roteiro + prompts das 9 imagens
-8. PROMPTS DE VIDEO - OBRIGATORIO EM TODOS OS MODOS, NUNCA CORTAR: prontos para a IA (Sora do proprio painel): dividir o comercial em 2 a 3 CENAS INDEPENDENTES de ate 12 segundos cada, uma por bloco separado e numerado (CENA 1, CENA 2...), cada bloco com prompt completo e autonomo pronto pra colar (produto, acao, movimento de camera, luz, estilo, sem texto na tela), indicando a duracao exata (4, 8 ou 12s) e o formato (vertical 720x1280 para Stories/Reels); ao final, a ordem de montagem das cenas para formar o video de 15-30s e 1 sugestao de trilha/ritmo
+8. PROMPTS DE VIDEO - OBRIGATORIO EM TODOS OS MODOS, NUNCA CORTAR: prontos para a IA (Sora do proprio painel): dividir o comercial em 2 a 3 CENAS INDEPENDENTES de ate 12 segundos cada, uma por bloco separado e numerado (CENA 1, CENA 2...), cada bloco com prompt completo e autonomo pronto pra colar (produto, acao, movimento de camera, luz, estilo, sem texto na tela), indicando a duracao exata (4, 8 ou 12s) e o formato (vertical 720x1280 para Stories/Reels); ao final, a ordem de montagem das cenas para formar o video de 15-30s e 1 sugestao de trilha/ritmo. ESTILOS DAS CENAS (padrao obrigatorio): CENA 1 = APRESENTADOR FALANDO - homem brasileiro simpatico ~35 anos, uniforme polo azul (#2F64E0) com logo Sayonara (gota d'agua com telhado de casa) bordado no peito, em cozinha clara e moderna com o produto EXATAMENTE como na foto de referencia sobre a bancada; ele olha para a camera e fala em portugues brasileiro uma fala curta de venda que caiba na duracao (incluir a fala entre aspas dentro do prompt, terminando com o slogan "Sayonara - onde a pureza encontra seu lar" quando couber); sem legendas na tela. CENA 2 = PRODUTO em destaque com demonstracao de uso e close dos diferenciais. CENA 3 = LIFESTYLE - familia/casa brasileira clara usando o produto, luz natural, clima de pureza da marca
 9. Nota final 0–100 + plano de melhoria
 10. (se pedido completo) estrategia comercial resumida.
 
@@ -336,8 +336,9 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <div id="iout" style="display:none;margin-top:10px"><img id="iimg" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"><a id="idl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="imagem-anuncio.png">⬇️ Baixar imagem</a>
    <label style="margin-top:10px">🔧 Não ficou boa? Diga o que mudar:</label><textarea id="ifix" style="min-height:48px" placeholder="Ex.: fundo mais claro, tira o texto, produto maior..."></textarea>
    <button class="btn btn-g" id="goifix">🔧 Corrigir e gerar de novo</button></div></div>
- <div class="card"><h2>🎬 3 · Gerar vídeo (Sora)</h2><p class="hint">Clique numa cena (o prompt entra sozinho), suba a foto real, veja a prévia barata e só então gere o vídeo. (4s ~R$2 · 12s ~R$6)</p>
+ <div class="card"><h2>🎬 3 · Gerar vídeo (Sora)</h2><p class="hint">Clique numa cena (o prompt entra sozinho), escolha o estilo, suba a foto real, veja a prévia barata e só então gere o vídeo. (4s ~R$2 · 12s ~R$6)</p>
   <div class="chips" id="vchips" style="margin-bottom:8px"></div>
+  <label>Estilo do vídeo</label><div class="chips" id="vstyle" style="margin-bottom:8px"><div class="chip on" data-v="produto">📦 Produto</div><div class="chip" data-v="apresentador">🧑‍💼 Apresentador falando</div><div class="chip" data-v="lifestyle">🏠 Lifestyle</div></div>
   <label class="imgbtn" for="vimgIn" style="padding:10px;margin-bottom:8px;display:block">📷 <strong>Foto real do produto</strong> (pro vídeo não inventar)</label><input id="vimgIn" type="file" accept="image/*" hidden><div class="thumbs" id="vthumbs" style="margin:0 0 8px"></div>
   <textarea id="vprompt" placeholder="Gere o anúncio no passo 1 — as cenas aparecem aqui."></textarea>
   <div class="g2" style="margin-top:8px"><div class="field"><label>Duração</label><select id="vsec"><option value="4">4 segundos</option><option value="8">8 segundos</option><option value="12">12 segundos (max. da IA)</option></select></div><div class="field"><label>Formato</label><select id="vsize"><option value="720x1280">Vertical (Stories/Reels)</option><option value="1280x720">Horizontal</option></select></div></div>
@@ -353,7 +354,11 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 <script>
 var imgs=[];
 function cg(id,m){var g=document.getElementById(id);g.onclick=function(e){var c=e.target.closest('.chip');if(!c)return;if(m)c.classList.toggle('on');else{[].forEach.call(g.children,function(x){x.classList.remove('on')});c.classList.add('on')}}}
-cg('modo',0);cg('canais',1);cg('prof',0);
+cg('modo',0);cg('canais',1);cg('prof',0);cg('vstyle',0);
+function estiloVid(p){var s=one('vstyle');
+ if(s==='apresentador')return p+' ESTILO APRESENTADOR: homem brasileiro simpatico, ~35 anos, vestindo uniforme polo azul (#2F64E0) com logo da Sayonara (gota d\'agua com telhado de casa) bordado no peito, em cozinha clara e moderna, com o produto EXATAMENTE como na foto de referencia sobre a bancada (nao alterar o produto). Ele olha para a camera e fala em portugues brasileiro, tom confiante e amigavel, apresentando o produto, e termina com: "Sayonara - onde a pureza encontra seu lar." Iluminacao natural suave, camera frontal estavel. Sem legendas ou textos na tela.';
+ if(s==='lifestyle')return p+' ESTILO LIFESTYLE: cena real de casa brasileira clara e aconchegante, familia usando o produto no dia a dia, luz natural suave, tons brancos com detalhes em ciano (#2FD4E0), clima de pureza e bem-estar, sem textos na tela.';
+ return p}
 function one(id){var e=document.querySelector('#'+id+' .chip.on');return e?e.dataset.v:''}
 function many(id){return[].map.call(document.querySelectorAll('#'+id+' .chip.on'),function(x){return x.dataset.v})}
 function v(id){var e=document.getElementById(id);return e?e.value.trim():''}
@@ -408,7 +413,7 @@ document.getElementById('govid').onclick=function(){
  var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
  var btn=this;btn.disabled=true;document.getElementById('vspin').style.display='block';document.getElementById('vout').style.display='none';
  refVideo(function(b64){
- fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p,seconds:v('vsec'),size:v('vsize'),imageBase64:b64,mediaType:b64?'image/png':null})})
+ fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:estiloVid(p),seconds:v('vsec'),size:v('vsize'),imageBase64:b64,mediaType:b64?'image/png':null})})
  .then(function(r){return r.json()}).then(function(j){
   btn.disabled=false;document.getElementById('vspin').style.display='none';
   if(j.video){var u='data:video/mp4;base64,'+j.video;document.getElementById('vvid').src=u;document.getElementById('vdl').href=u;document.getElementById('vout').style.display='block'}
@@ -420,7 +425,7 @@ document.getElementById('goprev').onclick=function(){
  var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
  var btn=this;btn.disabled=true;document.getElementById('pspin').style.display='block';document.getElementById('pout').style.display='none';
  var rd=refDados();var sz=v('vsize')==='1280x720'?'1536x1024':'1024x1536';
- fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p+' (quadro estatico do video, sem texto na imagem)',size:sz,imageBase64:rd?rd.b64:null,mediaType:rd?rd.mt:null})})
+ fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:estiloVid(p)+' (quadro estatico do video, sem texto na imagem)',size:sz,imageBase64:rd?rd.b64:null,mediaType:rd?rd.mt:null})})
  .then(function(r){return r.json()}).then(function(j){
   btn.disabled=false;document.getElementById('pspin').style.display='none';
   if(j.image){document.getElementById('pimg').src='data:image/png;base64,'+j.image;document.getElementById('pout').style.display='block'}
