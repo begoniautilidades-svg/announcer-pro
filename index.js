@@ -22,6 +22,8 @@ REGRAS POR CANAL:
 
 IMAGENS: entregue o roteiro de 9 artes com PROMPTS prontos pra IA. A capa é fundo branco puro, sem texto. Todo prompt manda usar a FOTO REAL do produto (em anexo, quando houver) como referência e manter o produto IDÊNTICO; formato 1:1, 1200x1200.
 
+IDENTIDADE VISUAL SAYONARA (obrigatoria em TODA imagem e video): paleta oficial ciano #2FD4E0, azul #2F64E0 e azul medio #2E9CE0, sempre sobre fundos brancos ou claros; clima visual clean e premium remetendo a agua, pureza e lar (cozinhas claras, luz natural suave, tons azuis); tipografia Montserrat quando houver texto em artes secundarias (capa sempre sem texto); logo da marca = gota d'agua com telhado de casa, slogan "onde a pureza encontra seu lar". Todo prompt de imagem e de video gerado DEVE citar essa paleta e esse clima visual.
+
 FORMATO DA ENTREGA (markdown), adaptando profundidade ao pedido:
 1. Resumo executivo + pendências [CONFIRMAR]
 2. Palavras-chave (essenciais, secundárias, cauda longa, negativas)
@@ -30,7 +32,9 @@ FORMATO DA ENTREGA (markdown), adaptando profundidade ao pedido:
 5. Bullets, FAQ, objeções tratadas, ficha técnica, conteúdo da embalagem, avisos
 6. Roteiro + prompts das 9 imagens
 7. Nota final 0–100 + plano de melhoria (sempre incluir, logo apos as imagens)
-8. (se pedido completo) PROMPTS DE VIDEO prontos para a IA (Sora do proprio painel): dividir o comercial em 2 a 3 CENAS INDEPENDENTES de ate 12 segundos cada, uma por bloco separado e numerado (CENA 1, CENA 2...), cada bloco com prompt completo e autonomo pronto pra colar (produto, acao, movimento de camera, luz, estilo, sem texto na tela), indicando a duracao exata (4, 8 ou 12s) e o formato (vertical 720x1280 para Stories/Reels); ao final, a ordem de montagem das cenas para formar o video de 15-30s e 1 sugestao de trilha/ritmo. Depois, estrategia comercial.`;
+8. (se pedido completo) PROMPTS DE VIDEO prontos para a IA (Sora do proprio painel): dividir o comercial em 2 a 3 CENAS INDEPENDENTES de ate 12 segundos cada, uma por bloco separado e numerado (CENA 1, CENA 2...), cada bloco com prompt completo e autonomo pronto pra colar (produto, acao, movimento de camera, luz, estilo, sem texto na tela), indicando a duracao exata (4, 8 ou 12s) e o formato (vertical 720x1280 para Stories/Reels); ao final, a ordem de montagem das cenas para formar o video de 15-30s e 1 sugestao de trilha/ritmo. Depois, estrategia comercial.
+
+OBRIGATORIO EM TODOS OS MODOS (inclusive Rapido): termine a resposta com uma linha contendo exatamente ===DADOS=== e, na linha seguinte, um JSON valido em UMA unica linha no formato {"imagens":["prompt completo da imagem 1","prompt da imagem 2"],"cenas":[{"seg":"8","prompt":"prompt completo da cena 1"}]} - "imagens" com ate 9 itens (minimo 3), "cenas" com 2 a 3 itens, "seg" apenas "4", "8" ou "12". Os prompts do JSON devem ser os MESMOS das secoes de imagens e video, completos e autonomos (em portugues, descrevendo produto, cena, luz, estilo). Nada depois do JSON.`;
 
 async function handleGenerate(request, env) {
   if (!env.ANTHROPIC_API_KEY) {
@@ -92,7 +96,18 @@ async function handleGenerate(request, env) {
     }
   }
   text = text.trim();
-  return json({ result: text });
+  let imagens = [], cenas = [];
+  const mi = text.indexOf("===DADOS===");
+  if (mi > -1) {
+    const tail = text.slice(mi + 11);
+    try {
+      const dj = JSON.parse(tail.slice(tail.indexOf("{"), tail.lastIndexOf("}") + 1));
+      if (Array.isArray(dj.imagens)) imagens = dj.imagens.map(String).slice(0, 9);
+      if (Array.isArray(dj.cenas)) cenas = dj.cenas.slice(0, 4).map(function (c) { return { seg: String(c.seg || "8"), prompt: String(c.prompt || "") }; });
+    } catch (e) {}
+    text = text.slice(0, mi).trim();
+  }
+  return json({ result: text, imagens: imagens, cenas: cenas });
 }
 
 async function handleImage(request, env) {
@@ -109,7 +124,7 @@ async function handleImage(request, env) {
     const fd = new FormData();
     fd.append("model", "gpt-image-1");
     fd.append("prompt", prompt);
-    fd.append("size", "1024x1024");
+    fd.append("size", ["1024x1024", "1024x1536", "1536x1024"].indexOf(String(body.size)) >= 0 ? String(body.size) : "1024x1024");
     fd.append("quality", env.IMAGE_QUALITY || "medium");
     fd.append("image", new Blob([bin], { type: body.mediaType }), "referencia.png");
     r = await fetch("https://api.openai.com/v1/images/edits", {
@@ -121,7 +136,7 @@ async function handleImage(request, env) {
     r = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: { "authorization": "Bearer " + env.OPENAI_API_KEY, "content-type": "application/json" },
-      body: JSON.stringify({ model: "gpt-image-1", prompt, size: "1024x1024", quality: env.IMAGE_QUALITY || "medium" })
+      body: JSON.stringify({ model: "gpt-image-1", prompt, size: ["1024x1024", "1024x1536", "1536x1024"].indexOf(String(body.size)) >= 0 ? String(body.size) : "1024x1024", quality: env.IMAGE_QUALITY || "medium" })
     });
   }
   if (!r.ok) {
@@ -132,6 +147,31 @@ async function handleImage(request, env) {
   const b64 = data.data && data.data[0] && data.data[0].b64_json;
   if (!b64) return json({ error: "Resposta sem imagem." }, 502);
   return json({ image: b64 });
+}
+
+async function handleFix(request, env) {
+  if (!env.ANTHROPIC_API_KEY) return json({ error: "Falta configurar ANTHROPIC_API_KEY." }, 500);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "JSON invalido." }, 400); }
+  const promptOrig = String(body.prompt || "").slice(0, 5000);
+  const ajuste = String(body.ajuste || "").slice(0, 1500);
+  if (!promptOrig || !ajuste) return json({ error: "Faltou o prompt original ou o ajuste." }, 400);
+  const tipo = body.tipo === "video" ? "video" : "imagem";
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({
+      model: env.MODEL || "claude-3-5-sonnet-latest",
+      max_tokens: 1200,
+      system: "Voce reescreve prompts de geracao de " + tipo + " por IA. Receba o prompt original e o ajuste pedido e devolva SOMENTE o novo prompt completo reescrito, em portugues, sem comentarios nem markdown, mantendo tudo que nao foi pedido para mudar.",
+      messages: [{ role: "user", content: "PROMPT ORIGINAL:\n" + promptOrig + "\n\nAJUSTE PEDIDO:\n" + ajuste }]
+    })
+  });
+  if (!r.ok) { const t = await r.text(); return json({ error: "Erro da API do Claude (" + r.status + "): " + t.slice(0, 300) }, 502); }
+  const data = await r.json();
+  const novo = (((data.content || [])[0] || {}).text || "").trim();
+  if (!novo) return json({ error: "Resposta vazia." }, 502);
+  return json({ prompt: novo });
 }
 
 async function handleVideo(request, env) {
@@ -147,6 +187,10 @@ async function handleVideo(request, env) {
   fd.append("prompt", prompt);
   fd.append("seconds", ["4", "8", "12"].indexOf(String(body.seconds)) >= 0 ? String(body.seconds) : "4");
   fd.append("size", body.size === "1280x720" ? "1280x720" : "720x1280");
+  if (body.imageBase64 && body.mediaType) {
+    const bin = Uint8Array.from(atob(body.imageBase64), c => c.charCodeAt(0));
+    fd.append("input_reference", new Blob([bin], { type: body.mediaType }), "referencia.png");
+  }
   const auth = { "authorization": "Bearer " + env.OPENAI_API_KEY };
   let r = await fetch("https://api.openai.com/v1/videos", { method: "POST", headers: auth, body: fd });
   if (!r.ok) {
@@ -199,6 +243,9 @@ export default {
     if (url.pathname === "/api/video" && request.method === "POST") {
       return handleVideo(request, env);
     }
+    if (url.pathname === "/api/fix" && request.method === "POST") {
+      return handleFix(request, env);
+    }
     return new Response(HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
   }
 };
@@ -244,9 +291,9 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 <p>Passo a passo: preencha à esquerda → 1 Gerar anúncio → 2 Imagens → 3 Vídeo. Marca oficial: Sayonara.</p></div></header>
 <div class="container">
 <div>
- <div class="card"><h2>1 · Modo</h2>
+ <div class="card"><h2>1 · O que vamos fazer?</h2>
   <div class="chips" id="modo"><div class="chip on" data-v="Criar anúncio novo">Criar novo</div><div class="chip" data-v="Otimizar existente">Otimizar</div><div class="chip" data-v="Replicar em outra cor/variação">Replicar cor</div><div class="chip" data-v="Adaptar para outro canal">Adaptar canal</div></div></div>
- <div class="card"><h2>2 · Imagem de referência <span class="req">*</span></h2><p class="hint">Foto real do produto (fundo branco de preferência).</p>
+ <div class="card"><h2>2 · Foto real do produto <span class="req">*</span></h2><p class="hint">Ela garante que as imagens geradas fiquem idênticas ao seu produto.</p>
   <label class="imgbtn" for="img">📷 <strong>Importar imagem</strong></label><input id="img" type="file" accept="image/*" hidden><div class="thumbs" id="thumbs"></div></div>
  <div class="card"><h2>3 · Informações do produto</h2>
   <div class="g2"><div class="field"><label>Nome <span class="req">*</span></label><input id="nome" placeholder="Panela de Pressão 4,2L"></div><div class="field"><label>Marca</label><input id="marca" value="Sayonara"></div></div>
@@ -258,32 +305,39 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
  <div class="card"><h2>4 · É refil/compatível?</h2><p class="hint">Liga a Regra de Ouro (protege de bloqueio).</p>
   <div class="sw"><label class="switch"><input type="checkbox" id="ct"><span class="sl"></span></label><span style="font-size:.85rem">Sim, é compatível</span></div>
   <div class="compat" id="cb"><div class="g2"><div class="field"><label>Marca REAL do produto</label><input id="marcaReal" placeholder="Hidro Filtros"></div><div class="field"><label>Compatível com (original)</label><input id="marcaOrig" placeholder="IBBL FR600"></div></div></div></div>
- <div class="card"><h2>5 · Descrição / observações</h2><textarea id="desc" placeholder="Tudo que souber do produto, uso, público..."></textarea></div>
- <div class="card"><h2>6 · Links de referência</h2>
-  <div class="field"><label>Meu anúncio atual (otimização)</label><input id="linkMeu" placeholder="https://..."></div>
-  <div class="field"><label>Produto similar (base quando não achar)</label><input id="linkSim" placeholder="https://..."></div></div>
- <div class="card"><h2>7 · Canais e profundidade</h2>
+ <div class="card"><h2>5 · Detalhes extras (opcional)</h2><p class="hint">Tudo ajuda a vender melhor: uso, público, links de referência.</p><textarea id="desc" placeholder="Tudo que souber do produto, uso, público..."></textarea>
+  <div class="g2" style="margin-top:10px"><div class="field"><label>Meu anúncio atual (p/ otimizar)</label><input id="linkMeu" placeholder="https://..."></div><div class="field"><label>Produto similar (base)</label><input id="linkSim" placeholder="https://..."></div></div></div>
+ <div class="card"><h2>6 · Canais e profundidade</h2>
   <label>Canais</label><div class="chips" id="canais" style="margin-bottom:12px"><div class="chip on" data-v="Mercado Livre">Mercado Livre</div><div class="chip" data-v="Shopee">Shopee</div><div class="chip" data-v="Amazon">Amazon</div><div class="chip" data-v="Magalu">Magalu</div><div class="chip" data-v="TikTok Shop">TikTok Shop</div><div class="chip" data-v="Google Shopping">Google Shopping</div></div>
   <label>Profundidade</label><div class="chips" id="prof"><div class="chip on" data-v="Pacote completo">Completo</div><div class="chip" data-v="Rápido">Rápido</div></div></div>
 </div>
 <div class="side">
- <div class="card"><h2>✨ 1 · Gerar anúncio</h2><p class="hint">Preencheu? Clique e o texto completo sai aqui, com os prompts de imagem e vídeo.</p>
+ <div class="card"><h2>✨ 1 · Gerar anúncio</h2><p class="hint">Preencha à esquerda e clique. O texto sai aqui e os prompts entram sozinhos nos passos 2 e 3.</p>
   <button class="btn btn-p" id="go">🚀 Gerar anúncio</button>
   <div class="spin" id="spin">⏳ Criando o anúncio completo… pode levar 2 a 5 min. Não feche a página.</div>
   <div id="out" style="display:none"></div>
   <button class="btn btn-g" id="copy" style="display:none">📎 Copiar tudo</button></div>
- <div class="card"><h2>🎨 2 · Gerar imagem</h2><p class="hint">Copie um dos 9 prompts do anúncio e cole abaixo. A foto importada é usada como referência para manter o produto idêntico. (~R$0,25/imagem)</p>
-  <textarea id="iprompt" placeholder="Cole aqui o prompt da imagem..."></textarea>
+ <div class="card"><h2>🎨 2 · Gerar imagem</h2><p class="hint">Clique numa imagem abaixo (o prompt entra sozinho) e gere. Usa a foto do passo 2 como referência. (~R$0,25/imagem)</p>
+  <div class="chips" id="ichips" style="margin-bottom:8px"></div>
+  <textarea id="iprompt" placeholder="Gere o anúncio no passo 1 — os prompts aparecem aqui. Ou cole um prompt seu."></textarea>
   <button class="btn btn-p" id="goimg" style="margin-top:8px">🎨 Gerar imagem</button>
   <div class="spin" id="ispin">⏳ Gerando imagem… pode levar ~1 min.</div>
-  <div id="iout" style="display:none;margin-top:10px"><img id="iimg" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"><a id="idl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="imagem-anuncio.png">⬇️ Baixar imagem</a></div></div>
- <div class="card"><h2>🎬 3 · Gerar vídeo (Sora)</h2><p class="hint">Cole o roteiro de vídeo do anúncio (ou descreva a cena). Gerado a partir do texto. (4s ~R$2 · 12s ~R$6 · leva 2 a 6 min)</p>
-  <textarea id="vprompt" placeholder="Cole aqui o prompt do vídeo..."></textarea>
+  <div id="iout" style="display:none;margin-top:10px"><img id="iimg" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"><a id="idl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="imagem-anuncio.png">⬇️ Baixar imagem</a>
+   <label style="margin-top:10px">🔧 Não ficou boa? Diga o que mudar:</label><textarea id="ifix" style="min-height:48px" placeholder="Ex.: fundo mais claro, tira o texto, produto maior..."></textarea>
+   <button class="btn btn-g" id="goifix">🔧 Corrigir e gerar de novo</button></div></div>
+ <div class="card"><h2>🎬 3 · Gerar vídeo (Sora)</h2><p class="hint">Clique numa cena (o prompt entra sozinho), suba a foto real, veja a prévia barata e só então gere o vídeo. (4s ~R$2 · 12s ~R$6)</p>
+  <div class="chips" id="vchips" style="margin-bottom:8px"></div>
+  <label class="imgbtn" for="vimgIn" style="padding:10px;margin-bottom:8px;display:block">📷 <strong>Foto real do produto</strong> (pro vídeo não inventar)</label><input id="vimgIn" type="file" accept="image/*" hidden><div class="thumbs" id="vthumbs" style="margin:0 0 8px"></div>
+  <textarea id="vprompt" placeholder="Gere o anúncio no passo 1 — as cenas aparecem aqui."></textarea>
   <div class="g2" style="margin-top:8px"><div class="field"><label>Duração</label><select id="vsec"><option value="4">4 segundos</option><option value="8">8 segundos</option><option value="12">12 segundos (max. da IA)</option></select></div><div class="field"><label>Formato</label><select id="vsize"><option value="720x1280">Vertical (Stories/Reels)</option><option value="1280x720">Horizontal</option></select></div></div>
-  <button class="btn btn-p" id="govid">🎬 Gerar vídeo</button>
+  <button class="btn btn-g" id="goprev" style="margin-top:0">👁️ Prévia da cena (imagem ~R$0,25)</button>
+  <div class="spin" id="pspin">⏳ Gerando prévia…</div>
+  <div id="pout" style="display:none;margin-top:8px;text-align:center"><img id="pimg" style="max-width:70%;border-radius:10px;border:1px solid var(--line)"></div>
+  <button class="btn btn-p" id="govid" style="margin-top:8px">🎬 Gerar vídeo</button>
   <div class="spin" id="vspin">⏳ Gerando vídeo… pode levar até 5 min. Não feche a página.</div>
-  <div id="vout" style="display:none;margin-top:10px"><video id="vvid" controls style="max-width:100%;border-radius:10px;border:1px solid var(--line)"></video><a id="vdl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="video-anuncio.mp4">⬇️ Baixar vídeo</a></div></div>
-</div>
+  <div id="vout" style="display:none;margin-top:10px"><video id="vvid" controls style="max-width:100%;border-radius:10px;border:1px solid var(--line)"></video><a id="vdl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="video-anuncio.mp4">⬇️ Baixar vídeo</a>
+   <label style="margin-top:10px">🔧 Não ficou bom? Diga o que mudar:</label><textarea id="vfix" style="min-height:48px" placeholder="Ex.: câmera mais lenta, cozinha mais clara..."></textarea>
+   <button class="btn btn-g" id="govfix">🔧 Corrigir prompt da cena</button></div></div>
 </div>
 <script>
 var img=null;
@@ -304,6 +358,14 @@ function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação
  var lm=v('linkMeu'),ls=v('linkSim');if(lm)t+='\nMeu anúncio: '+lm;if(ls)t+='\nSimilar base: '+ls;
  if(!img)t+='\n(Sem imagem anexada — descreva a aparência ou marque [CONFIRMAR].)';
  return t}
+function montarChips(imgs,cenas){
+ var ic=document.getElementById('ichips');ic.innerHTML='';
+ imgs.forEach(function(p,i){var d=document.createElement('div');d.className='chip';d.textContent='Imagem '+(i+1);d.onclick=function(){document.getElementById('iprompt').value=p;[].forEach.call(ic.children,function(x){x.classList.remove('on')});d.classList.add('on')};ic.appendChild(d)});
+ var vc=document.getElementById('vchips');vc.innerHTML='';
+ cenas.forEach(function(c,i){var d=document.createElement('div');d.className='chip';d.textContent='Cena '+(i+1)+' ('+c.seg+'s)';d.onclick=function(){document.getElementById('vprompt').value=c.prompt;var sl=document.getElementById('vsec');if(['4','8','12'].indexOf(c.seg)>-1)sl.value=c.seg;[].forEach.call(vc.children,function(x){x.classList.remove('on')});d.classList.add('on')};vc.appendChild(d)});
+ if(ic.children.length){ic.children[0].click()}
+ if(vc.children.length){vc.children[0].click()}
+}
 document.getElementById('go').onclick=function(){
  if(!v('nome')){alert('Preencha ao menos o Nome do produto.');return}
  var btn=this;btn.disabled=true;document.getElementById('spin').style.display='block';
@@ -312,7 +374,7 @@ document.getElementById('go').onclick=function(){
  .then(function(r){return r.json()}).then(function(j){
    btn.disabled=false;document.getElementById('spin').style.display='none';
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
-   if(j.result){document.getElementById('copy').style.display='block'}
+   if(j.result){document.getElementById('copy').style.display='block';montarChips(j.imagens||[],j.cenas||[])}
  }).catch(function(e){btn.disabled=false;document.getElementById('spin').style.display='none';out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
 document.getElementById('goimg').onclick=function(){
  var p=v('iprompt');if(!p){alert('Cole o prompt da imagem primeiro.');return}
@@ -324,15 +386,46 @@ document.getElementById('goimg').onclick=function(){
   else{alert(j.error||'Erro desconhecido.')}
  }).catch(function(e){btn.disabled=false;document.getElementById('ispin').style.display='none';alert('Falha de rede: '+e)});
 };
+var vimg=null;
+var vin=document.getElementById('vimgIn'),vth=document.getElementById('vthumbs');
+vin.onchange=function(){var f=vin.files[0];if(!f)return;var r=new FileReader();r.onload=function(){vimg={url:r.result};vth.innerHTML='<div class="thumb"><img src="'+r.result+'"><span data-x="1">×</span></div>'};r.readAsDataURL(f);vin.value='';};
+vth.onclick=function(e){if(e.target.dataset&&e.target.dataset.x){vimg=null;vth.innerHTML=''}};
+function refDados(){var ref=vimg||img;if(!ref)return null;return{b64:ref.data||ref.url.split(',')[1],mt:ref.media||ref.url.slice(5,ref.url.indexOf(';'))}}
+function refVideo(cb){var ref=vimg||img;if(!ref){cb(null);return}var dims=v('vsize')==='1280x720'?[1280,720]:[720,1280];var im=new Image();im.onload=function(){var c=document.createElement('canvas');c.width=dims[0];c.height=dims[1];var x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);var e=Math.min(c.width/im.width,c.height/im.height);var nw=im.width*e,nh=im.height*e;x.drawImage(im,(c.width-nw)/2,(c.height-nh)/2,nw,nh);cb(c.toDataURL('image/png').split(',')[1])};im.onerror=function(){cb(null)};im.src=ref.url}
 document.getElementById('govid').onclick=function(){
- var p=v('vprompt');if(!p){alert('Cole o prompt do vídeo primeiro.');return}
+ var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
  var btn=this;btn.disabled=true;document.getElementById('vspin').style.display='block';document.getElementById('vout').style.display='none';
- fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p,seconds:v('vsec'),size:v('vsize')})})
+ refVideo(function(b64){
+ fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p,seconds:v('vsec'),size:v('vsize'),imageBase64:b64,mediaType:b64?'image/png':null})})
  .then(function(r){return r.json()}).then(function(j){
   btn.disabled=false;document.getElementById('vspin').style.display='none';
   if(j.video){var u='data:video/mp4;base64,'+j.video;document.getElementById('vvid').src=u;document.getElementById('vdl').href=u;document.getElementById('vout').style.display='block'}
   else{alert(j.error||'Erro desconhecido.')}
  }).catch(function(e){btn.disabled=false;document.getElementById('vspin').style.display='none';alert('Falha de rede: '+e)});
+ });
 };
+document.getElementById('goprev').onclick=function(){
+ var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
+ var btn=this;btn.disabled=true;document.getElementById('pspin').style.display='block';document.getElementById('pout').style.display='none';
+ var rd=refDados();var sz=v('vsize')==='1280x720'?'1536x1024':'1024x1536';
+ fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p+' (quadro estatico do video, sem texto na imagem)',size:sz,imageBase64:rd?rd.b64:null,mediaType:rd?rd.mt:null})})
+ .then(function(r){return r.json()}).then(function(j){
+  btn.disabled=false;document.getElementById('pspin').style.display='none';
+  if(j.image){document.getElementById('pimg').src='data:image/png;base64,'+j.image;document.getElementById('pout').style.display='block'}
+  else{alert(j.error||'Erro desconhecido.')}
+ }).catch(function(e){btn.disabled=false;document.getElementById('pspin').style.display='none';alert('Falha de rede: '+e)});
+};
+function corrigir(tipo,campoPrompt,campoFix,btn,rotulo,depois){
+ var p=v(campoPrompt),a=v(campoFix);if(!a){alert('Escreva o que quer mudar.');return}
+ btn.disabled=true;btn.textContent='⏳ Reescrevendo...';
+ fetch('/api/fix',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({tipo:tipo,prompt:p,ajuste:a})})
+ .then(function(r){return r.json()}).then(function(j){
+  btn.disabled=false;btn.textContent=rotulo;
+  if(j.prompt){document.getElementById(campoPrompt).value=j.prompt;document.getElementById(campoFix).value='';if(depois)depois()}
+  else{alert(j.error||'Erro desconhecido.')}
+ }).catch(function(e){btn.disabled=false;btn.textContent=rotulo;alert('Falha de rede: '+e)});
+}
+document.getElementById('goifix').onclick=function(){corrigir('imagem','iprompt','ifix',this,'\ud83d\udd27 Corrigir e gerar de novo',function(){document.getElementById('goimg').click()})};
+document.getElementById('govfix').onclick=function(){corrigir('video','vprompt','vfix',this,'\ud83d\udd27 Corrigir prompt da cena',null)};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
 </script></body></html>`;
