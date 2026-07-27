@@ -134,6 +134,52 @@ async function handleImage(request, env) {
   return json({ image: b64 });
 }
 
+async function handleVideo(request, env) {
+  if (!env.OPENAI_API_KEY) {
+    return json({ error: "Falta configurar OPENAI_API_KEY no Cloudflare (Settings > Variables and Secrets)." }, 500);
+  }
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "JSON invalido." }, 400); }
+  const prompt = String(body.prompt || "").slice(0, 8000);
+  if (!prompt) return json({ error: "Cole o prompt do video." }, 400);
+  const fd = new FormData();
+  fd.append("model", "sora-2");
+  fd.append("prompt", prompt);
+  fd.append("seconds", body.seconds === "8" ? "8" : "4");
+  fd.append("size", body.size === "1280x720" ? "1280x720" : "720x1280");
+  const auth = { "authorization": "Bearer " + env.OPENAI_API_KEY };
+  let r = await fetch("https://api.openai.com/v1/videos", { method: "POST", headers: auth, body: fd });
+  if (!r.ok) {
+    const t = await r.text();
+    return json({ error: "Erro da API da OpenAI (" + r.status + "): " + t.slice(0, 500) }, 502);
+  }
+  let job = await r.json();
+  for (let i = 0; i < 100; i++) {
+    if (job.status === "completed") break;
+    if (job.status === "failed") {
+      return json({ error: "Geracao do video falhou: " + ((job.error && job.error.message) || "erro desconhecido") }, 502);
+    }
+    await new Promise(function (res) { setTimeout(res, 5000); });
+    r = await fetch("https://api.openai.com/v1/videos/" + job.id, { headers: auth });
+    if (!r.ok) {
+      const t = await r.text();
+      return json({ error: "Erro ao consultar o video (" + r.status + "): " + t.slice(0, 300) }, 502);
+    }
+    job = await r.json();
+  }
+  if (job.status !== "completed") return json({ error: "Tempo esgotado. Tente de novo em alguns minutos." }, 504);
+  const vr = await fetch("https://api.openai.com/v1/videos/" + job.id + "/content", { headers: auth });
+  if (!vr.ok) {
+    const t = await vr.text();
+    return json({ error: "Erro ao baixar o video (" + vr.status + "): " + t.slice(0, 300) }, 502);
+  }
+  const bufv = await vr.arrayBuffer();
+  const bytes = new Uint8Array(bufv);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+  return json({ video: btoa(bin) });
+}
+
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -149,6 +195,9 @@ export default {
     }
     if (url.pathname === "/api/image" && request.method === "POST") {
       return handleImage(request, env);
+    }
+    if (url.pathname === "/api/video" && request.method === "POST") {
+      return handleVideo(request, env);
     }
     return new Response(HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
   }
@@ -192,7 +241,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 .req{color:var(--warn)}
 </style></head><body>
 <header><div class="w"><h1>🚀 ANNOUNCER PRO — Criação de Anúncios</h1>
-<p>Preencha, clique em Gerar e o anúncio sai pronto na tela. Marca oficial: Sayonara.</p></div></header>
+<p>Passo a passo: preencha à esquerda → 1 Gerar anúncio → 2 Imagens → 3 Vídeo. Marca oficial: Sayonara.</p></div></header>
 <div class="container">
 <div>
  <div class="card"><h2>1 · Modo</h2>
@@ -216,17 +265,25 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
  <div class="card"><h2>7 · Canais e profundidade</h2>
   <label>Canais</label><div class="chips" id="canais" style="margin-bottom:12px"><div class="chip on" data-v="Mercado Livre">Mercado Livre</div><div class="chip" data-v="Shopee">Shopee</div><div class="chip" data-v="Amazon">Amazon</div><div class="chip" data-v="Magalu">Magalu</div><div class="chip" data-v="TikTok Shop">TikTok Shop</div><div class="chip" data-v="Google Shopping">Google Shopping</div></div>
   <label>Profundidade</label><div class="chips" id="prof"><div class="chip on" data-v="Pacote completo">Completo</div><div class="chip" data-v="Rápido">Rápido</div></div></div>
- <div class="card"><h2>8 · Gerar imagem (motor do ChatGPT)</h2><p class="hint">Cole um dos 9 prompts gerados. Usa a foto importada como referência para manter o produto idêntico.</p>
+</div>
+<div class="side">
+ <div class="card"><h2>✨ 1 · Gerar anúncio</h2><p class="hint">Preencheu? Clique e o texto completo sai aqui, com os prompts de imagem e vídeo.</p>
+  <button class="btn btn-p" id="go">🚀 Gerar anúncio</button>
+  <div class="spin" id="spin">⏳ Criando o anúncio completo… pode levar 2 a 5 min. Não feche a página.</div>
+  <div id="out" style="display:none"></div>
+  <button class="btn btn-g" id="copy" style="display:none">📎 Copiar tudo</button></div>
+ <div class="card"><h2>🎨 2 · Gerar imagem</h2><p class="hint">Copie um dos 9 prompts do anúncio e cole abaixo. A foto importada é usada como referência para manter o produto idêntico. (~R$0,25/imagem)</p>
   <textarea id="iprompt" placeholder="Cole aqui o prompt da imagem..."></textarea>
   <button class="btn btn-p" id="goimg" style="margin-top:8px">🎨 Gerar imagem</button>
   <div class="spin" id="ispin">⏳ Gerando imagem… pode levar ~1 min.</div>
   <div id="iout" style="display:none;margin-top:10px"><img id="iimg" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"><a id="idl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="imagem-anuncio.png">⬇️ Baixar imagem</a></div></div>
+ <div class="card"><h2>🎬 3 · Gerar vídeo (Sora)</h2><p class="hint">Cole o roteiro de vídeo do anúncio (ou descreva a cena). Gerado a partir do texto. (~R$2 por 4s · leva 2 a 5 min)</p>
+  <textarea id="vprompt" placeholder="Cole aqui o prompt do vídeo..."></textarea>
+  <div class="g2" style="margin-top:8px"><div class="field"><label>Duração</label><select id="vsec"><option value="4">4 segundos</option><option value="8">8 segundos</option></select></div><div class="field"><label>Formato</label><select id="vsize"><option value="720x1280">Vertical (Stories/Reels)</option><option value="1280x720">Horizontal</option></select></div></div>
+  <button class="btn btn-p" id="govid">🎬 Gerar vídeo</button>
+  <div class="spin" id="vspin">⏳ Gerando vídeo… pode levar até 5 min. Não feche a página.</div>
+  <div id="vout" style="display:none;margin-top:10px"><video id="vvid" controls style="max-width:100%;border-radius:10px;border:1px solid var(--line)"></video><a id="vdl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="video-anuncio.mp4">⬇️ Baixar vídeo</a></div></div>
 </div>
-<div class="side"><div class="card"><h2>✨ Resultado</h2><p class="hint">Clique e o anúncio aparece aqui.</p>
- <button class="btn btn-p" id="go">Gerar anúncio</button>
- <div class="spin" id="spin">⏳ Pesquisando e criando o anúncio… pode levar até ~30s.</div>
- <div id="out" style="display:none"></div>
- <button class="btn btn-g" id="copy" style="display:none">📎 Copiar</button></div></div>
 </div>
 <script>
 var img=null;
@@ -266,6 +323,16 @@ document.getElementById('goimg').onclick=function(){
   if(j.image){var u='data:image/png;base64,'+j.image;document.getElementById('iimg').src=u;document.getElementById('idl').href=u;document.getElementById('iout').style.display='block'}
   else{alert(j.error||'Erro desconhecido.')}
  }).catch(function(e){btn.disabled=false;document.getElementById('ispin').style.display='none';alert('Falha de rede: '+e)});
+};
+document.getElementById('govid').onclick=function(){
+ var p=v('vprompt');if(!p){alert('Cole o prompt do vídeo primeiro.');return}
+ var btn=this;btn.disabled=true;document.getElementById('vspin').style.display='block';document.getElementById('vout').style.display='none';
+ fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p,seconds:v('vsec'),size:v('vsize')})})
+ .then(function(r){return r.json()}).then(function(j){
+  btn.disabled=false;document.getElementById('vspin').style.display='none';
+  if(j.video){var u='data:video/mp4;base64,'+j.video;document.getElementById('vvid').src=u;document.getElementById('vdl').href=u;document.getElementById('vout').style.display='block'}
+  else{alert(j.error||'Erro desconhecido.')}
+ }).catch(function(e){btn.disabled=false;document.getElementById('vspin').style.display='none';alert('Falha de rede: '+e)});
 };
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
 </script></body></html>`;
