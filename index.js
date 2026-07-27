@@ -6,6 +6,8 @@
  *   - MODEL              (opcional)     ex.: claude-3-5-sonnet-latest
  */
 
+import { STUDIO_HTML } from "./studio.js";
+
 const SYSTEM_PROMPT = `Você é o ANNOUNCER PRO, um redator/analista sênior de e-commerce das lojas Sayonara / Dona Begô / Purifácil (Mercado Livre, Shopee, Amazon, Magalu, TikTok Shop, Google Shopping). Crie o melhor anúncio possível para o produto informado, com dados verdadeiros. Entregue em português do Brasil.
 
 REGRAS DA CASA (obrigatórias):
@@ -409,6 +411,9 @@ function json(obj, status = 200) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === "/studio" || url.pathname === "/studio/") {
+      return new Response(STUDIO_HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
+    }
     if (url.pathname === "/api/generate" && request.method === "POST") {
       return handleGenerate(request, env);
     }
@@ -506,6 +511,11 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <div class="spin" id="spin">⏳ Criando o anúncio completo… pode levar 2 a 5 min. Não feche a página.</div>
   <div id="out" style="display:none"></div>
   <button class="btn btn-g" id="copy" style="display:none">📎 Copiar tudo</button></div>
+ <div class="card" id="studiocard" style="border-color:#F6ABBB;background:#FDEEF1">
+  <h2 style="color:#9E1E3A">🌸 Levar para o STUDIO DONA BEGÔ</h2>
+  <p class="hint">O texto do anúncio fica aqui. As imagens e o vídeo passam a ser feitos no STUDIO, com as suas fotos reais, as medidas reais e uma parada para você aprovar antes de cada passo que custa dinheiro.</p>
+  <button class="btn" id="gostudio" style="background:#E92C56;color:#fff">Enviar para o STUDIO →</button>
+  <div id="stmsg" style="display:none;font-size:.85rem;margin-top:8px;color:#9E1E3A"></div></div>
  <div class="card" id="canalcard" style="display:none"><h2>📋 Pronto para publicar (por canal)</h2>
   <p class="hint">Clique no canal, copie campo por campo e cole direto na plataforma.</p>
   <div class="chips" id="cchips" style="margin-bottom:10px"></div>
@@ -517,7 +527,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
    <p class="hint" style="margin-top:8px">Cole aqui o link do script de arquivamento. O passo a passo está no documento <strong>COMO LIGAR O APP AO DRIVE</strong>, na sua pasta ANÚNCIOS SAYONARA.</p>
    <div class="field"><input id="gsurl" placeholder="https://script.google.com/macros/s/..../exec"></div>
    <button class="btn btn-g" id="bgs" style="margin-top:6px">Salvar link</button></details></div>
- <div class="card"><h2>🎨 2 · Gerar imagem</h2><p class="hint">Clique numa imagem abaixo (o prompt entra sozinho), deixe ele PRO, escolha a qualidade e gere. As fotos do passo 2 são copiadas fielmente — o produto sai idêntico ao seu.</p>
+ <div class="card"><h2>🎨 2 · Gerar imagem <span style="font-size:.68rem;font-weight:600;color:#64748b">— vai mudar para o STUDIO</span></h2><p class="hint">Clique numa imagem abaixo (o prompt entra sozinho), deixe ele PRO, escolha a qualidade e gere. As fotos do passo 2 são copiadas fielmente — o produto sai idêntico ao seu.</p>
   <div class="chips" id="ichips" style="margin-bottom:8px"></div>
   <textarea id="iprompt" placeholder="Gere o anúncio no passo 1 — os prompts aparecem aqui. Ou cole um prompt seu."></textarea>
   <button class="btn btn-g" id="gopro" style="margin-top:8px">✨ Deixar o prompt PRO (estúdio profissional)</button>
@@ -528,7 +538,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <div id="iout" style="display:none;margin-top:10px"><img id="iimg" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"><a id="idl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="imagem-anuncio.png">⬇️ Baixar imagem</a>
    <label style="margin-top:10px">🔧 Não ficou boa? Diga o que mudar:</label><textarea id="ifix" style="min-height:48px" placeholder="Ex.: fundo mais claro, tira o texto, produto maior..."></textarea>
    <button class="btn btn-g" id="goifix">🔧 Corrigir e gerar de novo</button></div></div>
- <div class="card"><h2>🎬 3 · Gerar vídeo (Sora)</h2><p class="hint">Clique numa cena (o prompt entra sozinho), escolha o estilo, suba as fotos reais (uma de cada produto), veja a prévia barata, corrija o que estiver errado e só então gere o vídeo. (4s ~R$2 · 12s ~R$6)</p>
+ <div class="card"><h2>🎬 3 · Gerar vídeo (Sora) <span style="font-size:.68rem;font-weight:600;color:#64748b">— vai mudar para o STUDIO</span></h2><p class="hint">Clique numa cena (o prompt entra sozinho), escolha o estilo, suba as fotos reais (uma de cada produto), veja a prévia barata, corrija o que estiver errado e só então gere o vídeo. (4s ~R$2 · 12s ~R$6)</p>
   <div class="chips" id="vchips" style="margin-bottom:8px"></div>
   <label>Estilo do vídeo</label><div class="chips" id="vstyle" style="margin-bottom:8px"><div class="chip on" data-v="produto">📦 Produto</div><div class="chip" data-v="apresentador">🧑‍💼 Apresentador falando</div><div class="chip" data-v="lifestyle">🏠 Lifestyle</div></div>
   <label class="imgbtn" for="vimgIn" style="padding:10px;margin-bottom:8px;display:block">📷 <strong>Fotos reais</strong> (até 4 — ex.: 1 do purificador + 1 do refil)</label><input id="vimgIn" type="file" accept="image/*" multiple hidden><div class="thumbs" id="vthumbs" style="margin:0 0 8px"></div>
@@ -571,7 +581,9 @@ function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação
  var lm=v('linkMeu'),ls=v('linkSim');if(lm)t+='\nMeu anúncio: '+lm;if(ls)t+='\nSimilar base: '+ls;
  if(!imgs.length)t+='\n(Sem imagem anexada — descreva a aparência ou marque [CONFIRMAR].)';
  return t}
+var ULT={imagens:[],cenas:[]};
 function montarChips(imgs,cenas){
+ ULT.imagens=imgs||[];ULT.cenas=cenas||[];
  var ic=document.getElementById('ichips');ic.innerHTML='';
  imgs.forEach(function(p,i){var d=document.createElement('div');d.className='chip';d.textContent='Imagem '+(i+1);d.onclick=function(){document.getElementById('iprompt').value=p;[].forEach.call(ic.children,function(x){x.classList.remove('on')});d.classList.add('on')};ic.appendChild(d)});
  var vc=document.getElementById('vchips');vc.innerHTML='';
@@ -733,4 +745,13 @@ document.getElementById('govfix').onclick=function(){corrigir('video','vprompt',
 document.getElementById('gopfix').onclick=function(){corrigir('video','vprompt','pfix',this,'\ud83d\udd27 Corrigir e gerar prévia de novo',function(){document.getElementById('goprev').click()})};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
 try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';montarChips(_d.imagens||[],_d.cenas||[]);montarCanais(_d.result)}}}catch(x){}
+document.getElementById('gostudio').onclick=function(){
+ var c=document.getElementById('ct').checked;
+ var d={nome:v('nome'),marca:(c?(v('marcaReal')||''):(v('marca')||'Sayonara')),sku:v('sku'),categoria:v('cat'),medidas:v('med'),peso:v('peso'),compat:c,compatCom:v('marcaOrig'),imagens:ULT.imagens||[],cenas:ULT.cenas||[],quando:new Date().toLocaleString('pt-BR')};
+ var m=document.getElementById('stmsg');m.style.display='block';
+ if(!d.nome&&!d.cenas.length){m.textContent='Preencha ao menos o nome do produto (ou gere o an\u00fancio) antes de enviar.';return}
+ try{localStorage.setItem('db_studio_entrada',JSON.stringify(d))}catch(e){m.textContent='N\u00e3o consegui guardar os dados neste navegador.';return}
+ m.textContent='Enviado. Abrindo o STUDIO...';
+ window.open('/studio','_blank');
+};
 </script></body></html>`;
