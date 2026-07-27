@@ -165,28 +165,41 @@ async function handleImage(request, env) {
   let fotos = [];
   if (Array.isArray(body.imagens)) fotos = body.imagens.slice(0, 4).filter(function (f) { return f && f.data && f.media; });
   else if (body.imageBase64 && body.mediaType) fotos = [{ data: body.imageBase64, media: body.mediaType }];
-  let r;
-  if (fotos.length) {
-    const fd = new FormData();
-    fd.append("model", "gpt-image-1");
-    fd.append("prompt", prompt);
-    fd.append("size", ["1024x1024", "1024x1536", "1536x1024"].indexOf(String(body.size)) >= 0 ? String(body.size) : "1024x1024");
-    fd.append("quality", env.IMAGE_QUALITY || "medium");
-    for (let i = 0; i < fotos.length; i++) {
-      const bin = Uint8Array.from(atob(fotos[i].data), c => c.charCodeAt(0));
-      fd.append(fotos.length > 1 ? "image[]" : "image", new Blob([bin], { type: fotos[i].media }), "referencia" + i + ".png");
+  const tam = ["1024x1024", "1024x1536", "1536x1024"].indexOf(String(body.size)) >= 0 ? String(body.size) : "1024x1024";
+  const qual = ["low", "medium", "high"].indexOf(String(body.quality)) >= 0 ? String(body.quality) : (env.IMAGE_QUALITY || "medium");
+  async function pedir(modelo, fid) {
+    if (fotos.length) {
+      const fd = new FormData();
+      fd.append("model", modelo);
+      fd.append("prompt", prompt);
+      fd.append("size", tam);
+      fd.append("quality", qual);
+      fd.append("output_format", "png");
+      if (fid) fd.append("input_fidelity", "high");
+      for (let i = 0; i < fotos.length; i++) {
+        const bin = Uint8Array.from(atob(fotos[i].data), c => c.charCodeAt(0));
+        fd.append(fotos.length > 1 ? "image[]" : "image", new Blob([bin], { type: fotos[i].media }), "referencia" + i + ".png");
+      }
+      return fetch("https://api.openai.com/v1/images/edits", {
+        method: "POST",
+        headers: { "authorization": "Bearer " + env.OPENAI_API_KEY },
+        body: fd
+      });
     }
-    r = await fetch("https://api.openai.com/v1/images/edits", {
-      method: "POST",
-      headers: { "authorization": "Bearer " + env.OPENAI_API_KEY },
-      body: fd
-    });
-  } else {
-    r = await fetch("https://api.openai.com/v1/images/generations", {
+    return fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: { "authorization": "Bearer " + env.OPENAI_API_KEY, "content-type": "application/json" },
-      body: JSON.stringify({ model: "gpt-image-1", prompt, size: ["1024x1024", "1024x1536", "1536x1024"].indexOf(String(body.size)) >= 0 ? String(body.size) : "1024x1024", quality: env.IMAGE_QUALITY || "medium" })
+      body: JSON.stringify({ model: modelo, prompt, size: tam, quality: qual, output_format: "png" })
     });
+  }
+  const preferido = env.IMAGE_MODEL || "gpt-image-1.5";
+  let r = await pedir(preferido, true);
+  if (!r.ok && (r.status === 400 || r.status === 404)) {
+    const t0 = await r.text();
+    const l0 = String(t0 || "").toLowerCase();
+    const ehModelo = l0.indexOf("model") > -1 || l0.indexOf("input_fidelity") > -1 || l0.indexOf("unknown parameter") > -1 || l0.indexOf("unsupported") > -1 || l0.indexOf("output_format") > -1;
+    if (ehModelo) r = await pedir("gpt-image-1", false);
+    else return json({ error: erroOpenAI(r.status, t0) }, 502);
   }
   if (!r.ok) {
     const t = await r.text();
@@ -504,9 +517,12 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
    <p class="hint" style="margin-top:8px">Cole aqui o link do script de arquivamento. O passo a passo está no documento <strong>COMO LIGAR O APP AO DRIVE</strong>, na sua pasta ANÚNCIOS SAYONARA.</p>
    <div class="field"><input id="gsurl" placeholder="https://script.google.com/macros/s/..../exec"></div>
    <button class="btn btn-g" id="bgs" style="margin-top:6px">Salvar link</button></details></div>
- <div class="card"><h2>🎨 2 · Gerar imagem</h2><p class="hint">Clique numa imagem abaixo (o prompt entra sozinho) e gere. Usa a foto do passo 2 como referência. (~R$0,25/imagem)</p>
+ <div class="card"><h2>🎨 2 · Gerar imagem</h2><p class="hint">Clique numa imagem abaixo (o prompt entra sozinho), deixe ele PRO, escolha a qualidade e gere. As fotos do passo 2 são copiadas fielmente — o produto sai idêntico ao seu.</p>
   <div class="chips" id="ichips" style="margin-bottom:8px"></div>
   <textarea id="iprompt" placeholder="Gere o anúncio no passo 1 — os prompts aparecem aqui. Ou cole um prompt seu."></textarea>
+  <button class="btn btn-g" id="gopro" style="margin-top:8px">✨ Deixar o prompt PRO (estúdio profissional)</button>
+  <label style="margin-top:10px">Qualidade da imagem</label>
+  <div class="chips" id="iq" style="margin-bottom:8px"><div class="chip" data-v="low">💨 Rascunho ~R$0,05</div><div class="chip on" data-v="medium">✅ Boa ~R$0,20</div><div class="chip" data-v="high">💎 Máxima ~R$0,75</div></div>
   <button class="btn btn-p" id="goimg" style="margin-top:8px">🎨 Gerar imagem</button>
   <div class="spin" id="ispin">⏳ Gerando imagem… pode levar ~1 min.</div>
   <div id="iout" style="display:none;margin-top:10px"><img id="iimg" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"><a id="idl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="imagem-anuncio.png">⬇️ Baixar imagem</a>
@@ -533,7 +549,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 <script>
 var imgs=[];
 function cg(id,m){var g=document.getElementById(id);g.onclick=function(e){var c=e.target.closest('.chip');if(!c)return;if(m)c.classList.toggle('on');else{[].forEach.call(g.children,function(x){x.classList.remove('on')});c.classList.add('on')}}}
-cg('modo',0);cg('canais',1);cg('prof',0);cg('vstyle',0);
+cg('modo',0);cg('canais',1);cg('prof',0);cg('vstyle',0);cg('iq',0);
 function estiloVid(p){var s=one('vstyle');
  if(s==='apresentador')return p+' ESTILO APRESENTADOR: homem brasileiro simpatico, ~35 anos, vestindo uniforme polo azul (#2F64E0) com logo da Sayonara (gota d\'agua com telhado de casa) bordado no peito, em cozinha clara e moderna, com o produto EXATAMENTE como na foto de referencia sobre a bancada (nao alterar o produto). Ele olha para a camera e fala em portugues brasileiro, tom confiante e amigavel, apresentando o produto, e termina com: "Sayonara - onde a pureza encontra seu lar." Iluminacao natural suave, camera frontal estavel. Sem legendas ou textos na tela.';
  if(s==='lifestyle')return p+' ESTILO LIFESTYLE: cena real de casa brasileira clara e aconchegante, familia usando o produto no dia a dia, luz natural suave, tons brancos com detalhes em ciano (#2FD4E0), clima de pureza e bem-estar, sem textos na tela.';
@@ -649,10 +665,12 @@ document.getElementById('go').onclick=function(){
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
    if(j.result){document.getElementById('copy').style.display='block';montarChips(j.imagens||[],j.cenas||[]);montarCanais(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
  }).catch(function(e){btn.disabled=false;document.getElementById('spin').style.display='none';out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
+document.getElementById('gopro').onclick=function(){var t=document.getElementById('iprompt');var q=t.value.trim();if(!q){alert('Escolha uma imagem na lista acima ou cole um prompt primeiro.');return}t.value=montaPrompt(q);t.scrollTop=0};
 document.getElementById('goimg').onclick=function(){
  var p=v('iprompt');if(!p){alert('Cole o prompt da imagem primeiro.');return}
+ p=montaPrompt(p);
  var btn=this;btn.disabled=true;document.getElementById('ispin').style.display='block';document.getElementById('iout').style.display='none';
- fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p,imagens:imgs.map(function(o){return{data:o.data,media:o.media}})})})
+ fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p,quality:one('iq')||'medium',imagens:imgs.map(function(o){return{data:o.data,media:o.media}})})})
  .then(function(r){return r.json()}).then(function(j){
   btn.disabled=false;document.getElementById('ispin').style.display='none';
   if(j.image){var u='data:image/png;base64,'+j.image;document.getElementById('iimg').src=u;document.getElementById('idl').href=u;document.getElementById('iout').style.display='block'}
@@ -665,6 +683,9 @@ function vRender(){vth.innerHTML=vimgs.map(function(o,i){return '<div class="thu
 vin.onchange=function(){[].forEach.call(vin.files,function(f){if(vimgs.length>=4)return;var r=new FileReader();r.onload=function(){vimgs.push({data:r.result.split(',')[1],media:f.type,url:r.result});vRender()};r.readAsDataURL(f)});vin.value='';};
 vth.onclick=function(e){if(e.target.dataset&&e.target.dataset.x!==undefined&&e.target.dataset.x!==''){vimgs.splice(Number(e.target.dataset.x),1);vRender()}};
 function refLista(){var a=vimgs.length?vimgs:imgs;return a.slice(0,4).map(function(o){return{data:o.data,media:o.media}})}
+function promptPro(p){if(p.indexOf('[ESTUDIO PRO]')>-1)return p;
+ return '[ESTUDIO PRO] Fotografia publicitaria de produto para e-commerce, padrao de estudio profissional, imagem quadrada 1:1 em altissima resolucao, produto perfeitamente nitido.\n\nO QUE MOSTRAR: '+p+'\n\nLUZ E CAMERA: uma unica fotografia real, camera full-frame com lente 50 mm em f/8, ISO 100. Luz principal de softbox grande a 45 graus acima e a esquerda, rebatedor branco do lado oposto abrindo as sombras, leve luz de contorno separando o produto do fundo. Sombra de contato suave e realista embaixo do produto. Sem flash estourado, sem sombra dura, sem halo, sem borda recortada, sem aparencia de montagem.\n\nCOMPOSICAO: produto centralizado e alinhado na vertical, ocupando cerca de 85% da altura do quadro, com a mesma margem de respiro dos quatro lados, camera na altura do meio do produto (nao de cima), silhueta limpa, nada cortado nas bordas.\n\nACABAMENTO: cores fieis e calibradas, branco realmente branco (#FFFFFF) sem cinza nem amarelado, textura real do material visivel, reflexos suaves e coerentes com a luz, foco nitido da frente ao fundo do produto, sem ruido e sem serrilhado.\n\nPROIBIDO: marca dagua, logotipo de banco de imagens, moldura, borda, colagem, montagem, texto inventado, letras tortas, borradas ou ilegiveis no rotulo, maos ou dedos deformados, produto duplicado, objetos cortados na borda, cenario bagunçado, aparencia de render 3D artificial, de ilustracao ou de desenho.'}
+function montaPrompt(p){return p.indexOf('[ESTUDIO PRO]')>-1?p:escala(promptPro(p))}
 function regraRefil(p){var nm=((v('nome')||'')+' '+(v('cat')||'')+' '+(p||'')).toLowerCase();
  if(nm.indexOf('refil')<0&&nm.indexOf('purificador')<0&&nm.indexOf('elemento filtrante')<0&&nm.indexOf('cartucho')<0)return '';
  return ' ESCALA REAL OBRIGATORIA: o refil/elemento filtrante mede 22 cm de altura por 6,3 cm de diametro - do tamanho de uma garrafa de agua de 500 ml; cabe inteiro em uma mao, os dedos se fecham em volta do corpo dele e o polegar quase encosta na ponta dos dedos; ocupa cerca de um quinto da altura do tronco da pessoa. O purificador de bancada mede 43 cm de altura por 33 cm de largura por 35 cm de profundidade - do tamanho de um micro-ondas pequeno; quando aparecer, aparece INTEIRO no enquadramento, apoiado sobre a bancada, ao lado da pessoa e na MESMA distancia da camera. PROPORCAO FIXA: a altura do purificador e o DOBRO da altura do refil. Se o refil parecer maior que metade do purificador, esta errado. Uma unica fotografia real, lente 50 mm, mesma luz e mesma profundidade para pessoa e produtos, sem colagem.'}
@@ -690,7 +711,7 @@ document.getElementById('goprev').onclick=function(){
  var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
  var btn=this;btn.disabled=true;document.getElementById('pspin').style.display='block';document.getElementById('pout').style.display='none';
  var rd=refLista();var sz=v('vsize')==='1280x720'?'1536x1024':'1024x1536';
- fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:escala(estiloVid(p))+' (quadro estatico do video, sem texto na imagem)',size:sz,imagens:rd})})
+ fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:escala(estiloVid(p))+' (quadro estatico do video, sem texto na imagem)',size:sz,quality:'medium',imagens:rd})})
  .then(function(r){return r.json()}).then(function(j){
   btn.disabled=false;document.getElementById('pspin').style.display='none';
   if(j.image){document.getElementById('pimg').src='data:image/png;base64,'+j.image;document.getElementById('pout').style.display='block'}
