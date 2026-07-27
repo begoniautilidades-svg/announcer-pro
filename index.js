@@ -30,7 +30,7 @@ FORMATO DA ENTREGA (markdown), adaptando profundidade ao pedido:
 5. Bullets, FAQ, objeções tratadas, ficha técnica, conteúdo da embalagem, avisos
 6. Roteiro + prompts das 9 imagens
 7. Nota final 0–100 + plano de melhoria (sempre incluir, logo apos as imagens)
-8. (se pedido completo) roteiros de video 15/30/60s e estrategia comercial.`;
+8. (se pedido completo) PROMPTS DE VIDEO prontos para a IA (Sora do proprio painel): dividir o comercial em 2 a 3 CENAS INDEPENDENTES de ate 12 segundos cada, uma por bloco separado e numerado (CENA 1, CENA 2...), cada bloco com prompt completo e autonomo pronto pra colar (produto, acao, movimento de camera, luz, estilo, sem texto na tela), indicando a duracao exata (4, 8 ou 12s) e o formato (vertical 720x1280 para Stories/Reels); ao final, a ordem de montagem das cenas para formar o video de 15-30s e 1 sugestao de trilha/ritmo. Depois, estrategia comercial.`;
 
 async function handleGenerate(request, env) {
   if (!env.ANTHROPIC_API_KEY) {
