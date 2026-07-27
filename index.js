@@ -490,16 +490,13 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
  <div class="card"><h2>2 · Fotos reais do produto <span class="req">*</span></h2><p class="hint">Até 4 fotos (ângulos diferentes ajudam). Elas garantem que as imagens geradas fiquem idênticas ao seu produto.</p>
   <label class="imgbtn" for="img">📷 <strong>Importar fotos (até 4)</strong></label><input id="img" type="file" accept="image/*" multiple hidden><div class="thumbs" id="thumbs"></div></div>
  <div class="card"><h2>3 · Informações do produto</h2>
-  <div class="g2"><div class="field"><label>Nome <span class="req">*</span></label><input id="nome" placeholder="Panela de Pressão 4,2L"></div><div class="field"><label>Marca</label><input id="marca" value="Sayonara"></div></div>
-  <div class="g3"><div class="field"><label>Categoria</label><input id="cat"></div><div class="field"><label>Cor/Variação</label><input id="cor"></div><div class="field"><label>Preço R$</label><input id="preco"></div></div>
-  <div class="g3"><div class="field"><label>Voltagem</label><select id="volt"><option value="">—</option><option>Bivolt</option><option>110/127V</option><option>220V</option><option>Não elétrico</option></select></div><div class="field"><label>Capac./Potência</label><input id="cap"></div><div class="field"><label>EAN/GTIN</label><input id="ean"></div></div>
-  <div class="g3"><div class="field"><label>Medidas</label><input id="med"></div><div class="field"><label>Peso</label><input id="peso"></div><div class="field"><label>Garantia</label><input id="gar"></div></div>
-  <div class="field"><label>Diferenciais</label><input id="dif" placeholder="sem PFOA, fundo duplo, 3 sistemas de segurança"></div>
-  <div class="field"><label>INMETRO/Certificação</label><input id="inmetro"></div></div>
+  <div class="g3"><div class="field"><label>SKU</label><input id="sku2" placeholder="FER-0053"></div><div class="field"><label>Nome <span class="req">*</span></label><input id="nome" placeholder="Panela de Pressão 4,2L"></div><div class="field"><label>Marca</label><input id="marca" value="Sayonara"></div></div>
+  <p class="hint" style="margin:-4px 0 10px">O SKU é o nome da pasta no Drive e do arquivo baixado. É o mesmo campo do bloco 1 — preencher em um preenche o outro.</p>
+  <div class="field"><label>Medidas</label><input id="med" placeholder="43 x 33 x 35 cm"><p class="hint" style="margin:6px 0 0">Vai junto para o STUDIO e enche o Contrato de medidas sozinho.</p></div></div>
  <div class="card"><h2>4 · É refil/compatível?</h2><p class="hint">Liga a Regra de Ouro (protege de bloqueio).</p>
   <div class="sw"><label class="switch"><input type="checkbox" id="ct"><span class="sl"></span></label><span style="font-size:.85rem">Sim, é compatível</span></div>
   <div class="compat" id="cb"><div class="g2"><div class="field"><label>Marca REAL do produto</label><input id="marcaReal" placeholder="Hidro Filtros"></div><div class="field"><label>Compatível com (original)</label><input id="marcaOrig" placeholder="IBBL FR600"></div></div></div></div>
- <div class="card"><h2>5 · Detalhes extras (opcional)</h2><p class="hint">Tudo ajuda a vender melhor: uso, público, links de referência.</p><textarea id="desc" placeholder="Tudo que souber do produto, uso, público..."></textarea>
+ <div class="card"><h2>5 · Detalhes extras (opcional)</h2><p class="hint">Tudo ajuda a vender melhor: uso, público, voltagem, diferenciais, links de referência.</p><textarea id="desc" placeholder="Tudo que souber do produto, uso, público, voltagem, diferenciais..."></textarea>
   <div class="g2" style="margin-top:10px"><div class="field"><label>Meu anúncio atual (p/ otimizar)</label><input id="linkMeu" placeholder="https://..."></div><div class="field"><label>Produto similar (base)</label><input id="linkSim" placeholder="https://..."></div></div></div>
  <div class="card"><h2>6 · Canais e profundidade</h2>
   <label>Canais</label><div class="chips" id="canais" style="margin-bottom:12px"><div class="chip on" data-v="Mercado Livre">Mercado Livre</div><div class="chip" data-v="Shopee">Shopee</div><div class="chip" data-v="Amazon">Amazon</div><div class="chip" data-v="Magalu">Magalu</div><div class="chip" data-v="TikTok Shop">TikTok Shop</div><div class="chip" data-v="Google Shopping">Google Shopping</div></div>
@@ -575,7 +572,7 @@ document.getElementById('ct').onchange=function(){document.getElementById('cb').
 function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação: '+one('modo')+'\n';t+='Profundidade: '+one('prof')+'\n';t+='Canais: '+(many('canais').join(', ')||'[CONFIRMAR]')+'\n\nPRODUTO:\n';
  var _sk=v('sku');if(_sk)t+='SKU: '+_sk+'\n';
  t+='Nome: '+(v('nome')||'[CONFIRMAR]')+'\n';t+='Marca oficial: '+(c?(v('marcaReal')||'[CONFIRMAR]'):(v('marca')||'Sayonara'))+'\n';
- [['Categoria','cat'],['Cor/Variação','cor'],['Preço','preco'],['Voltagem','volt'],['Capacidade/Potência','cap'],['EAN/GTIN','ean'],['Medidas','med'],['Peso','peso'],['Garantia','gar'],['Diferenciais','dif'],['INMETRO','inmetro']].forEach(function(p){var val=v(p[1]);if(val)t+=p[0]+': '+val+'\n'});
+ var _md=v('med');if(_md)t+='Medidas: '+_md+'\n';
  if(c){t+='\nPRODUTO COMPATÍVEL: aplicar Regra de Ouro. Marca real: '+(v('marcaReal')||'[CONFIRMAR]')+'. Compatível com: '+(v('marcaOrig')||'[CONFIRMAR]')+'. Nunca usar "original" para o produto.\n'}
  var d=v('desc');if(d)t+='\nObservações: '+d+'\n';
  var lm=v('linkMeu'),ls=v('linkSim');if(lm)t+='\nMeu anúncio: '+lm;if(ls)t+='\nSimilar base: '+ls;
@@ -640,6 +637,9 @@ document.getElementById('arquivar').onclick=function(){
   if(j.link)h+=' — <a href="'+esc(j.link)+'" target="_blank">abrir pasta</a>';
   if(j.arquivos&&j.arquivos.length)h+='<br>'+j.arquivos.map(esc).join('<br>');
   b.innerHTML=h}).catch(function(e){btn.disabled=false;b.innerHTML='⚠️ Falha: '+esc(e)})};
+(function(){var a=document.getElementById('sku'),b=document.getElementById('sku2');if(!a||!b)return;
+ a.addEventListener('input',function(){b.value=a.value});
+ b.addEventListener('input',function(){a.value=b.value});})();
 var skuData=null;
 function esc(x){return String(x==null?'':x).replace(/[&<>]/g,function(c){return c==='&'?'&amp;':(c==='<'?'&lt;':'&gt;')})}
 function csvUrl(){try{return localStorage.getItem('ap_csv')||''}catch(e){return ''}}
@@ -661,10 +661,10 @@ document.getElementById('bsku').onclick=function(){
   skuData=j;
   if(j.nome)document.getElementById('nome').value=j.nome;
   if(j.marca)document.getElementById('marca').value=j.marca;
-  if(j.preco)document.getElementById('preco').value=j.preco;
+  var _pc=document.getElementById('preco');if(j.preco&&_pc)_pc.value=j.preco;
   var h='✅ <strong>'+esc(j.sku)+'</strong> — '+esc(j.nome)+'<br>Custo <strong>R$ '+esc(j.custo||'?')+'</strong> · Venda <strong>R$ '+esc(j.preco||'?')+'</strong> · Margem <strong>R$ '+esc(j.margem||'?')+'</strong>'+(j.pct?' ('+esc(j.pct)+')':'');
   if(j.obs)h+='<br>Obs.: '+esc(j.obs);
-  h+='<br><span style="color:#64748b">Nome, marca e preço já foram preenchidos abaixo. O custo fica só aqui na tela — não vai para o texto do anúncio.</span>';
+  h+='<br><span style="color:#64748b">Nome e marca já foram preenchidos abaixo. Custo e preço ficam só aqui na tela — não vão para o texto do anúncio.</span>';
   box.innerHTML=h;
  }).catch(function(e){box.innerHTML='⚠️ Falha de rede: '+esc(e)})};
 document.getElementById('go').onclick=function(){
