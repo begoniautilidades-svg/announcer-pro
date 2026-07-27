@@ -132,6 +132,28 @@ async function handleGenerate(request, env) {
   return json({ result: text, imagens: imagens, cenas: cenas });
 }
 
+function erroOpenAI(status, t) {
+  var c = "";
+  try { c = String(((JSON.parse(t) || {}).error || {}).code || ""); } catch (e) { c = ""; }
+  var low = String(t || "").toLowerCase();
+  if (c === "billing_hard_limit_reached" || low.indexOf("billing hard limit") > -1) {
+    return "LIMITE DE GASTOS DA OPENAI ATINGIDO. Isso nao e erro do app. A sua conta da OpenAI tem um teto de gasto configurado e ele foi alcancado. Abra platform.openai.com/settings/organization/limits e aumente o valor de Budget / Hard limit. Se o saldo tambem acabou, adicione creditos em platform.openai.com/settings/organization/billing/overview. Depois volte aqui e clique em gerar de novo.";
+  }
+  if (c === "insufficient_quota" || low.indexOf("insufficient_quota") > -1 || low.indexOf("exceeded your current quota") > -1) {
+    return "A SUA CONTA DA OPENAI ESTA SEM CREDITOS. Adicione saldo em platform.openai.com/settings/organization/billing/overview e tente de novo.";
+  }
+  if (status === 401 || c === "invalid_api_key" || low.indexOf("incorrect api key") > -1) {
+    return "A CHAVE DA OPENAI ESTA INVALIDA. Gere outra em platform.openai.com/api-keys e atualize no Cloudflare em Settings > Variables and Secrets (nome OPENAI_API_KEY).";
+  }
+  if (status === 429) {
+    return "A OPENAI RECUSOU POR EXCESSO DE PEDIDOS agora. Espere 1 minuto e clique em gerar de novo.";
+  }
+  if (c === "moderation_blocked" || low.indexOf("safety system") > -1 || low.indexOf("content_policy") > -1) {
+    return "A OPENAI BLOQUEOU ESTE PROMPT pelas regras de conteudo. Reescreva o prompt (evite marcas de terceiros, pessoas reais e texto dentro da imagem) e tente de novo.";
+  }
+  return "Erro da API da OpenAI (" + status + "): " + String(t || "").slice(0, 400);
+}
+
 async function handleImage(request, env) {
   if (!env.OPENAI_API_KEY) {
     return json({ error: "Falta configurar OPENAI_API_KEY no Cloudflare (Settings > Variables and Secrets). Crie a chave em platform.openai.com/api-keys." }, 500);
@@ -168,7 +190,7 @@ async function handleImage(request, env) {
   }
   if (!r.ok) {
     const t = await r.text();
-    return json({ error: "Erro da API da OpenAI (" + r.status + "): " + t.slice(0, 500) }, 502);
+    return json({ error: erroOpenAI(r.status, t) }, 502);
   }
   const data = await r.json();
   const b64 = data.data && data.data[0] && data.data[0].b64_json;
@@ -222,7 +244,7 @@ async function handleVideo(request, env) {
   let r = await fetch("https://api.openai.com/v1/videos", { method: "POST", headers: auth, body: fd });
   if (!r.ok) {
     const t = await r.text();
-    return json({ error: "Erro da API da OpenAI (" + r.status + "): " + t.slice(0, 500) }, 502);
+    return json({ error: erroOpenAI(r.status, t) }, 502);
   }
   let job = await r.json();
   for (let i = 0; i < 100; i++) {
@@ -579,6 +601,9 @@ document.getElementById('arquivar').onclick=function(){
  var u=gsUrl(),b=document.getElementById('arqout'),btn=this;b.style.display='block';
  if(!u){b.innerHTML='⚙️ Antes cole o link do script em "Configurar o arquivamento no Drive", logo abaixo.';return}
  if(!canais.length){b.innerHTML='Gere um anúncio primeiro.';return}
+ var _sk=v('sku').trim();
+ if(!_sk&&!window.__semsku){b.innerHTML='📌 O campo <strong>SKU</strong> (lá em cima, no item 1) está vazio — a pasta no Drive vai se chamar <strong>SEM-SKU</strong>. Preencha o SKU e clique de novo, ou <a href="#" id="asemsku">arquivar assim mesmo</a>.';var _l=document.getElementById('asemsku');if(_l)_l.onclick=function(ev){ev.preventDefault();window.__semsku=1;document.getElementById('arquivar').click()};return}
+ window.__semsku=0;
  b.innerHTML='Enviando para o Drive…';btn.disabled=true;
  fetch('/api/arquivar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({destino:u,sku:v('sku')||'SEM-SKU',produto:v('nome')||'Produto',canais:canais,completo:document.getElementById('out').textContent||''})})
  .then(function(r){return r.json()}).then(function(j){btn.disabled=false;
