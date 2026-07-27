@@ -15,7 +15,7 @@ REGRAS DA CASA (obrigatórias):
 - REGRA DE OURO DOS COMPATÍVEIS (refil/peça): se o produto for compatível, a marca do anúncio é a marca REAL do produto (nunca a do original); NUNCA use "original" para descrever o produto; título no formato "Refil [Tipo] [Marca real] Compatível com [Marca/Modelo original]"; inclua na descrição o aviso: "Este produto é da marca [MARCA REAL] e é um item COMPATÍVEL/similar. NÃO é o original da [MARCA ORIGINAL]. A marca [MARCA ORIGINAL] é citada apenas para indicar compatibilidade. Todas as marcas pertencem aos seus donos, sem vínculo com a [MARCA REAL]."
 
 REGRAS POR CANAL:
-- Mercado Livre comum: TÍTULO máx 60 caracteres, começando pela palavra-chave mais buscada + atributos; catálogo (/p/) pode ter título longo. Descrição em texto puro, sem preço/contato/link externo. Ficha técnica completa.
+- Mercado Livre: o padrao da loja e anuncio de CATALOGO - titulo de ATE 120 CARACTERES comecando pela palavra-chave mais buscada + marca + atributos + beneficio principal (use o espaco todo). Anuncio comum (so quando pedido): titulo max 60. Descricao em texto puro, sem preco/contato/link externo. Ficha tecnica completa.
 - Shopee: título ~100 caracteres com sinônimos; descrição escaneável + FAQ.
 - Amazon: título Marca+Modelo+Tipo+atributos, sem preço/promo/emoji; 5 bullets de benefício.
 - Magalu: objetivo, marca+atributos. TikTok Shop: curto e apelativo, vídeo é o rei. Google Shopping: Marca+Produto+Atributo, GTIN importa.
@@ -27,12 +27,13 @@ IDENTIDADE VISUAL SAYONARA (obrigatoria em TODA imagem e video): paleta oficial 
 FORMATO DA ENTREGA (markdown), adaptando profundidade ao pedido:
 1. Resumo executivo + pendências [CONFIRMAR]
 2. Palavras-chave (essenciais, secundárias, cauda longa, negativas)
-3. Títulos por canal solicitado (com contagem de caracteres no ML comum) + alternativas
+3. Títulos por canal solicitado (com contagem de caracteres; ML catalogo ate 120) + alternativas
 4. Descrição pronta pra colar (por canal)
 5. Bullets, FAQ, objeções tratadas, ficha técnica, conteúdo da embalagem, avisos
-6. Roteiro + prompts das 9 imagens
-7. Nota final 0–100 + plano de melhoria (sempre incluir, logo apos as imagens)
-8. (se pedido completo) PROMPTS DE VIDEO prontos para a IA (Sora do proprio painel): dividir o comercial em 2 a 3 CENAS INDEPENDENTES de ate 12 segundos cada, uma por bloco separado e numerado (CENA 1, CENA 2...), cada bloco com prompt completo e autonomo pronto pra colar (produto, acao, movimento de camera, luz, estilo, sem texto na tela), indicando a duracao exata (4, 8 ou 12s) e o formato (vertical 720x1280 para Stories/Reels); ao final, a ordem de montagem das cenas para formar o video de 15-30s e 1 sugestao de trilha/ritmo. Depois, estrategia comercial.
+6. CONTEUDO A+ DA AMAZON pronto pra colar (padrao dos melhores vendedores: modulo hero com headline forte, 3 modulos de beneficio com titulo curto + texto + sugestao de imagem, tabela comparativa com modelos da linha, FAQ visual) E CONTEUDO ADICIONAL DO CATALOGO ML (rich content: blocos de texto persuasivo + sugestoes de banner), ambos seguindo as praticas dos anuncios campeoes da categoria
+7. Roteiro + prompts das 9 imagens
+8. Nota final 0–100 + plano de melhoria (sempre incluir, logo apos as imagens)
+9. (se pedido completo) PROMPTS DE VIDEO prontos para a IA (Sora do proprio painel): dividir o comercial em 2 a 3 CENAS INDEPENDENTES de ate 12 segundos cada, uma por bloco separado e numerado (CENA 1, CENA 2...), cada bloco com prompt completo e autonomo pronto pra colar (produto, acao, movimento de camera, luz, estilo, sem texto na tela), indicando a duracao exata (4, 8 ou 12s) e o formato (vertical 720x1280 para Stories/Reels); ao final, a ordem de montagem das cenas para formar o video de 15-30s e 1 sugestao de trilha/ritmo. Depois, estrategia comercial.
 
 OBRIGATORIO EM TODOS OS MODOS (inclusive Rapido): termine a resposta com uma linha contendo exatamente ===DADOS=== e, na linha seguinte, um JSON valido em UMA unica linha no formato {"imagens":["prompt completo da imagem 1","prompt da imagem 2"],"cenas":[{"seg":"8","prompt":"prompt completo da cena 1"}]} - "imagens" com ate 9 itens (minimo 3), "cenas" com 2 a 3 itens, "seg" apenas "4", "8" ou "12". Os prompts do JSON devem ser os MESMOS das secoes de imagens e video, completos e autonomos (em portugues, descrevendo produto, cena, luz, estilo). Nada depois do JSON.`;
 
@@ -46,12 +47,14 @@ async function handleGenerate(request, env) {
   const brief = String(body.brief || "").slice(0, 20000);
   const content = [{ type: "text", text: "Crie o anúncio a partir deste briefing:\n\n" + brief }];
 
-  // imagem opcional (base64 data URL)
-  if (body.imageBase64 && body.mediaType) {
-    content.push({
-      type: "image",
-      source: { type: "base64", media_type: body.mediaType, data: body.imageBase64 }
-    });
+  // fotos de referencia (ate 4)
+  let fotos = [];
+  if (Array.isArray(body.imagens)) fotos = body.imagens.slice(0, 4);
+  else if (body.imageBase64 && body.mediaType) fotos = [{ data: body.imageBase64, media: body.mediaType }];
+  for (const f of fotos) {
+    if (f && f.data && f.media) {
+      content.push({ type: "image", source: { type: "base64", media_type: String(f.media), data: String(f.data) } });
+    }
   }
 
   const payload = {
@@ -118,15 +121,20 @@ async function handleImage(request, env) {
   try { body = await request.json(); } catch { return json({ error: "JSON invalido." }, 400); }
   const prompt = String(body.prompt || "").slice(0, 4000);
   if (!prompt) return json({ error: "Cole o prompt da imagem." }, 400);
+  let fotos = [];
+  if (Array.isArray(body.imagens)) fotos = body.imagens.slice(0, 4).filter(function (f) { return f && f.data && f.media; });
+  else if (body.imageBase64 && body.mediaType) fotos = [{ data: body.imageBase64, media: body.mediaType }];
   let r;
-  if (body.imageBase64 && body.mediaType) {
-    const bin = Uint8Array.from(atob(body.imageBase64), c => c.charCodeAt(0));
+  if (fotos.length) {
     const fd = new FormData();
     fd.append("model", "gpt-image-1");
     fd.append("prompt", prompt);
     fd.append("size", ["1024x1024", "1024x1536", "1536x1024"].indexOf(String(body.size)) >= 0 ? String(body.size) : "1024x1024");
     fd.append("quality", env.IMAGE_QUALITY || "medium");
-    fd.append("image", new Blob([bin], { type: body.mediaType }), "referencia.png");
+    for (let i = 0; i < fotos.length; i++) {
+      const bin = Uint8Array.from(atob(fotos[i].data), c => c.charCodeAt(0));
+      fd.append(fotos.length > 1 ? "image[]" : "image", new Blob([bin], { type: fotos[i].media }), "referencia" + i + ".png");
+    }
     r = await fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",
       headers: { "authorization": "Bearer " + env.OPENAI_API_KEY },
@@ -293,8 +301,8 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 <div>
  <div class="card"><h2>1 · O que vamos fazer?</h2>
   <div class="chips" id="modo"><div class="chip on" data-v="Criar anúncio novo">Criar novo</div><div class="chip" data-v="Otimizar existente">Otimizar</div><div class="chip" data-v="Replicar em outra cor/variação">Replicar cor</div><div class="chip" data-v="Adaptar para outro canal">Adaptar canal</div></div></div>
- <div class="card"><h2>2 · Foto real do produto <span class="req">*</span></h2><p class="hint">Ela garante que as imagens geradas fiquem idênticas ao seu produto.</p>
-  <label class="imgbtn" for="img">📷 <strong>Importar imagem</strong></label><input id="img" type="file" accept="image/*" hidden><div class="thumbs" id="thumbs"></div></div>
+ <div class="card"><h2>2 · Fotos reais do produto <span class="req">*</span></h2><p class="hint">Até 4 fotos (ângulos diferentes ajudam). Elas garantem que as imagens geradas fiquem idênticas ao seu produto.</p>
+  <label class="imgbtn" for="img">📷 <strong>Importar fotos (até 4)</strong></label><input id="img" type="file" accept="image/*" multiple hidden><div class="thumbs" id="thumbs"></div></div>
  <div class="card"><h2>3 · Informações do produto</h2>
   <div class="g2"><div class="field"><label>Nome <span class="req">*</span></label><input id="nome" placeholder="Panela de Pressão 4,2L"></div><div class="field"><label>Marca</label><input id="marca" value="Sayonara"></div></div>
   <div class="g3"><div class="field"><label>Categoria</label><input id="cat"></div><div class="field"><label>Cor/Variação</label><input id="cor"></div><div class="field"><label>Preço R$</label><input id="preco"></div></div>
@@ -340,15 +348,16 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
    <button class="btn btn-g" id="govfix">🔧 Corrigir prompt da cena</button></div></div>
 </div>
 <script>
-var img=null;
+var imgs=[];
 function cg(id,m){var g=document.getElementById(id);g.onclick=function(e){var c=e.target.closest('.chip');if(!c)return;if(m)c.classList.toggle('on');else{[].forEach.call(g.children,function(x){x.classList.remove('on')});c.classList.add('on')}}}
 cg('modo',0);cg('canais',1);cg('prof',0);
 function one(id){var e=document.querySelector('#'+id+' .chip.on');return e?e.dataset.v:''}
 function many(id){return[].map.call(document.querySelectorAll('#'+id+' .chip.on'),function(x){return x.dataset.v})}
 function v(id){var e=document.getElementById(id);return e?e.value.trim():''}
 var inp=document.getElementById('img'),th=document.getElementById('thumbs');
-inp.onchange=function(){var f=inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){img={data:r.result.split(',')[1],media:f.type,url:r.result};th.innerHTML='<div class="thumb"><img src="'+r.result+'"><span data-x="1">×</span></div>'};r.readAsDataURL(f);inp.value='';};
-th.onclick=function(e){if(e.target.dataset&&e.target.dataset.x){img=null;th.innerHTML=''}};
+function renderThumbs(){th.innerHTML=imgs.map(function(o,i){return '<div class="thumb"><img src="'+o.url+'"><span data-x="'+i+'">×</span></div>'}).join('')}
+inp.onchange=function(){[].forEach.call(inp.files,function(f){if(imgs.length>=4)return;var r=new FileReader();r.onload=function(){imgs.push({data:r.result.split(',')[1],media:f.type,url:r.result});renderThumbs()};r.readAsDataURL(f)});inp.value='';};
+th.onclick=function(e){if(e.target.dataset&&e.target.dataset.x!==undefined&&e.target.dataset.x!==''){imgs.splice(Number(e.target.dataset.x),1);renderThumbs()}};
 document.getElementById('ct').onchange=function(){document.getElementById('cb').classList.toggle('show',this.checked)};
 function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação: '+one('modo')+'\n';t+='Profundidade: '+one('prof')+'\n';t+='Canais: '+(many('canais').join(', ')||'[CONFIRMAR]')+'\n\nPRODUTO:\n';
  t+='Nome: '+(v('nome')||'[CONFIRMAR]')+'\n';t+='Marca oficial: '+(c?(v('marcaReal')||'[CONFIRMAR]'):(v('marca')||'Sayonara'))+'\n';
@@ -356,7 +365,7 @@ function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação
  if(c){t+='\nPRODUTO COMPATÍVEL: aplicar Regra de Ouro. Marca real: '+(v('marcaReal')||'[CONFIRMAR]')+'. Compatível com: '+(v('marcaOrig')||'[CONFIRMAR]')+'. Nunca usar "original" para o produto.\n'}
  var d=v('desc');if(d)t+='\nObservações: '+d+'\n';
  var lm=v('linkMeu'),ls=v('linkSim');if(lm)t+='\nMeu anúncio: '+lm;if(ls)t+='\nSimilar base: '+ls;
- if(!img)t+='\n(Sem imagem anexada — descreva a aparência ou marque [CONFIRMAR].)';
+ if(!imgs.length)t+='\n(Sem imagem anexada — descreva a aparência ou marque [CONFIRMAR].)';
  return t}
 function montarChips(imgs,cenas){
  var ic=document.getElementById('ichips');ic.innerHTML='';
@@ -370,7 +379,7 @@ document.getElementById('go').onclick=function(){
  if(!v('nome')){alert('Preencha ao menos o Nome do produto.');return}
  var btn=this;btn.disabled=true;document.getElementById('spin').style.display='block';
  var out=document.getElementById('out');out.style.display='none';document.getElementById('copy').style.display='none';
- fetch('/api/generate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({brief:brief(),imageBase64:img?img.data:null,mediaType:img?img.media:null})})
+ fetch('/api/generate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({brief:brief(),imagens:imgs.map(function(o){return{data:o.data,media:o.media}})})})
  .then(function(r){return r.json()}).then(function(j){
    btn.disabled=false;document.getElementById('spin').style.display='none';
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
@@ -379,7 +388,7 @@ document.getElementById('go').onclick=function(){
 document.getElementById('goimg').onclick=function(){
  var p=v('iprompt');if(!p){alert('Cole o prompt da imagem primeiro.');return}
  var btn=this;btn.disabled=true;document.getElementById('ispin').style.display='block';document.getElementById('iout').style.display='none';
- fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p,imageBase64:img?img.data:null,mediaType:img?img.media:null})})
+ fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p,imagens:imgs.map(function(o){return{data:o.data,media:o.media}})})})
  .then(function(r){return r.json()}).then(function(j){
   btn.disabled=false;document.getElementById('ispin').style.display='none';
   if(j.image){var u='data:image/png;base64,'+j.image;document.getElementById('iimg').src=u;document.getElementById('idl').href=u;document.getElementById('iout').style.display='block'}
@@ -390,8 +399,8 @@ var vimg=null;
 var vin=document.getElementById('vimgIn'),vth=document.getElementById('vthumbs');
 vin.onchange=function(){var f=vin.files[0];if(!f)return;var r=new FileReader();r.onload=function(){vimg={url:r.result};vth.innerHTML='<div class="thumb"><img src="'+r.result+'"><span data-x="1">×</span></div>'};r.readAsDataURL(f);vin.value='';};
 vth.onclick=function(e){if(e.target.dataset&&e.target.dataset.x){vimg=null;vth.innerHTML=''}};
-function refDados(){var ref=vimg||img;if(!ref)return null;return{b64:ref.data||ref.url.split(',')[1],mt:ref.media||ref.url.slice(5,ref.url.indexOf(';'))}}
-function refVideo(cb){var ref=vimg||img;if(!ref){cb(null);return}var dims=v('vsize')==='1280x720'?[1280,720]:[720,1280];var im=new Image();im.onload=function(){var c=document.createElement('canvas');c.width=dims[0];c.height=dims[1];var x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);var e=Math.min(c.width/im.width,c.height/im.height);var nw=im.width*e,nh=im.height*e;x.drawImage(im,(c.width-nw)/2,(c.height-nh)/2,nw,nh);cb(c.toDataURL('image/png').split(',')[1])};im.onerror=function(){cb(null)};im.src=ref.url}
+function refDados(){var ref=vimg||imgs[0];if(!ref)return null;return{b64:ref.data||ref.url.split(',')[1],mt:ref.media||ref.url.slice(5,ref.url.indexOf(';'))}}
+function refVideo(cb){var ref=vimg||imgs[0];if(!ref){cb(null);return}var dims=v('vsize')==='1280x720'?[1280,720]:[720,1280];var im=new Image();im.onload=function(){var c=document.createElement('canvas');c.width=dims[0];c.height=dims[1];var x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);var e=Math.min(c.width/im.width,c.height/im.height);var nw=im.width*e,nh=im.height*e;x.drawImage(im,(c.width-nw)/2,(c.height-nh)/2,nw,nh);cb(c.toDataURL('image/png').split(',')[1])};im.onerror=function(){cb(null)};im.src=ref.url}
 document.getElementById('govid').onclick=function(){
  var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
  var btn=this;btn.disabled=true;document.getElementById('vspin').style.display='block';document.getElementById('vout').style.display='none';
