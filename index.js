@@ -145,7 +145,7 @@ async function handleVideo(request, env) {
   const fd = new FormData();
   fd.append("model", "sora-2");
   fd.append("prompt", prompt);
-  fd.append("seconds", body.seconds === "8" ? "8" : "4");
+  fd.append("seconds", ["4", "8", "12"].indexOf(String(body.seconds)) >= 0 ? String(body.seconds) : "4");
   fd.append("size", body.size === "1280x720" ? "1280x720" : "720x1280");
   const auth = { "authorization": "Bearer " + env.OPENAI_API_KEY };
   let r = await fetch("https://api.openai.com/v1/videos", { method: "POST", headers: auth, body: fd });
@@ -277,9 +277,9 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <button class="btn btn-p" id="goimg" style="margin-top:8px">🎨 Gerar imagem</button>
   <div class="spin" id="ispin">⏳ Gerando imagem… pode levar ~1 min.</div>
   <div id="iout" style="display:none;margin-top:10px"><img id="iimg" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"><a id="idl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="imagem-anuncio.png">⬇️ Baixar imagem</a></div></div>
- <div class="card"><h2>🎬 3 · Gerar vídeo (Sora)</h2><p class="hint">Cole o roteiro de vídeo do anúncio (ou descreva a cena). Gerado a partir do texto. (~R$2 por 4s · leva 2 a 5 min)</p>
+ <div class="card"><h2>🎬 3 · Gerar vídeo (Sora)</h2><p class="hint">Cole o roteiro de vídeo do anúncio (ou descreva a cena). Gerado a partir do texto. (4s ~R$2 · 12s ~R$6 · leva 2 a 6 min)</p>
   <textarea id="vprompt" placeholder="Cole aqui o prompt do vídeo..."></textarea>
-  <div class="g2" style="margin-top:8px"><div class="field"><label>Duração</label><select id="vsec"><option value="4">4 segundos</option><option value="8">8 segundos</option></select></div><div class="field"><label>Formato</label><select id="vsize"><option value="720x1280">Vertical (Stories/Reels)</option><option value="1280x720">Horizontal</option></select></div></div>
+  <div class="g2" style="margin-top:8px"><div class="field"><label>Duração</label><select id="vsec"><option value="4">4 segundos</option><option value="8">8 segundos</option><option value="12">12 segundos (max. da IA)</option></select></div><div class="field"><label>Formato</label><select id="vsize"><option value="720x1280">Vertical (Stories/Reels)</option><option value="1280x720">Horizontal</option></select></div></div>
   <button class="btn btn-p" id="govid">🎬 Gerar vídeo</button>
   <div class="spin" id="vspin">⏳ Gerando vídeo… pode levar até 5 min. Não feche a página.</div>
   <div id="vout" style="display:none;margin-top:10px"><video id="vvid" controls style="max-width:100%;border-radius:10px;border:1px solid var(--line)"></video><a id="vdl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="video-anuncio.mp4">⬇️ Baixar vídeo</a></div></div>
