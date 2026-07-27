@@ -27,8 +27,22 @@ IDENTIDADE VISUAL SAYONARA (obrigatoria em TODA imagem e video): paleta oficial 
 FORMATO DA ENTREGA (markdown), adaptando profundidade ao pedido:
 1. Resumo executivo + pendências [CONFIRMAR]
 2. Palavras-chave (essenciais, secundárias, cauda longa, negativas)
-3. Títulos por canal solicitado (com contagem de caracteres; ML catalogo ate 120) + alternativas
-4. Descrição pronta pra colar (por canal)
+3. ANUNCIO PRONTO POR CANAL - para CADA canal solicitado, entregue UM bloco delimitado EXATAMENTE com estes marcadores, sem alterar nem traduzir os rotulos, e sem nada entre os blocos:
+[[CANAL: Mercado Livre]]
+TITULO: titulo final em uma unica linha, respeitando o limite do canal, terminando com a contagem de caracteres entre parenteses
+TITULO ALTERNATIVO: uma segunda opcao em uma linha
+FICHA TECNICA:
+Campo: valor (uma informacao por linha)
+BULLETS:
+- um por linha (obrigatorio na Amazon, 5 bullets; nos outros canais so quando fizer sentido)
+DESCRICAO:
+texto completo pronto pra colar, ja no formato e no tamanho do canal
+PALAVRAS-CHAVE: separadas por virgula
+ROTEIRO DO VIDEO: obrigatorio no TikTok Shop (0-3s gancho, 3-8s produto, 8-20s uso, 20-30s fecho); nos outros canais escreva "-"
+OBSERVACOES DO CANAL: limites, regras e riscos especificos daquele canal
+[[/CANAL]]
+Repita o bloco inteiro para cada canal pedido, trocando o nome depois de CANAL:. Esses blocos sao o produto final da ferramenta - eles precisam estar completos e prontos pra colar na plataforma sem edicao.
+4. (o item 3 ja cobre titulos e descricoes por canal - nao repita essas informacoes fora dos blocos)
 5. Bullets, FAQ, objeções tratadas, ficha técnica, conteúdo da embalagem, avisos
 6. CONTEUDO A+ DA AMAZON pronto pra colar (padrao dos melhores vendedores: modulo hero com headline forte, 3 modulos de beneficio com titulo curto + texto + sugestao de imagem, tabela comparativa com modelos da linha, FAQ visual) E CONTEUDO ADICIONAL DO CATALOGO ML (rich content: blocos de texto persuasivo + sugestoes de banner), ambos seguindo as praticas dos anuncios campeoes da categoria
 7. Roteiro + prompts das 9 imagens
@@ -235,6 +249,119 @@ async function handleVideo(request, env) {
   return json({ video: btoa(bin) });
 }
 
+function parseCSV(t) {
+  const rows = [];
+  let row = [], cur = "", q = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (q) {
+      if (ch === '"') { if (t[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+      else cur += ch;
+    } else {
+      if (ch === '"') q = true;
+      else if (ch === ",") { row.push(cur); cur = ""; }
+      else if (ch === "\n") { row.push(cur); cur = ""; rows.push(row); row = []; }
+      else if (ch !== "\r") cur += ch;
+    }
+  }
+  row.push(cur); rows.push(row);
+  return rows;
+}
+
+function normTxt(s) {
+  return (s || "").toString().trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+async function handleSku(request) {
+  const url = new URL(request.url);
+  const src = url.searchParams.get("u") || "";
+  const want = normTxt(url.searchParams.get("sku") || "").toUpperCase();
+  const listOnly = url.searchParams.get("list") === "1";
+  let h;
+  try { h = new URL(src); } catch (e) { return json({ error: "Link inválido." }, 400); }
+  if (!/(^|\.)google\.com$/.test(h.hostname) && !/(^|\.)googleusercontent\.com$/.test(h.hostname)) {
+    return json({ error: "Por segurança só aceito link de planilha do Google." }, 400);
+  }
+  let r;
+  try { r = await fetch(h.toString(), { headers: { accept: "text/csv" } }); }
+  catch (e) { return json({ error: "Não consegui acessar a planilha: " + e }, 400); }
+  if (!r.ok) return json({ error: "A planilha respondeu com erro " + r.status + ". Confira se ela está publicada na web em formato CSV." }, 400);
+  const txt = await r.text();
+  if (/^\s*</.test(txt)) return json({ error: "Esse link não devolveu uma planilha. Use Arquivo → Compartilhar → Publicar na web → CSV." }, 400);
+  const rows = parseCSV(txt);
+  let hi = -1;
+  for (let i = 0; i < rows.length && i < 40; i++) {
+    if (normTxt(rows[i][0]) === "sku") { hi = i; break; }
+  }
+  if (hi < 0) return json({ error: "Não achei a coluna SKU na planilha." }, 400);
+  const head = rows[hi].map(normTxt);
+  const col = (...names) => {
+    for (const n of names) { const k = head.indexOf(n); if (k > -1) return k; }
+    for (const n of names) { const k = head.findIndex(c => c.indexOf(n) === 0); if (k > -1) return k; }
+    return -1;
+  };
+  const C = {
+    nome: col("produto"),
+    marca: col("loja / marca", "loja/marca", "marca"),
+    custo: col("custo (r$)", "custo"),
+    preco: col("preco de venda (r$)", "preco de venda", "preco"),
+    margem: col("margem (r$)"),
+    pct: col("margem %"),
+    obs: col("observacoes"),
+    link: col("link do anuncio principal", "link")
+  };
+  const get = (row, k) => (C[k] > -1 ? (row[C[k]] || "").trim() : "");
+  const data = rows.slice(hi + 1).filter(rw => (rw[0] || "").trim());
+  if (listOnly) return json({ skus: data.map(rw => rw[0].trim() + " — " + get(rw, "nome")).slice(0, 300) });
+  const hit = data.find(rw => normTxt(rw[0]).toUpperCase() === want);
+  if (!hit) return json({ error: "Não achei o SKU " + want + " na planilha." }, 404);
+  return json({
+    sku: hit[0].trim(),
+    nome: get(hit, "nome"),
+    marca: get(hit, "marca"),
+    custo: get(hit, "custo"),
+    preco: get(hit, "preco"),
+    margem: get(hit, "margem"),
+    pct: get(hit, "pct"),
+    obs: get(hit, "obs"),
+    link: get(hit, "link")
+  });
+}
+
+async function handleArquivar(request) {
+  let b;
+  try { b = await request.json(); } catch (e) { return json({ error: "JSON inválido." }, 400); }
+  let h;
+  try { h = new URL(String(b.destino || "")); } catch (e) { return json({ error: "Configure o link do script de arquivamento." }, 400); }
+  if (!/(^|\.)google\.com$/.test(h.hostname)) {
+    return json({ error: "O link de arquivamento precisa ser do Google Apps Script (script.google.com)." }, 400);
+  }
+  const canais = Array.isArray(b.canais) ? b.canais.slice(0, 10).map(c => ({
+    nome: String(c.nome || "Canal").slice(0, 60),
+    texto: String(c.texto || "").slice(0, 45000)
+  })) : [];
+  if (!canais.length) return json({ error: "Nenhum canal para arquivar." }, 400);
+  const payload = {
+    sku: String(b.sku || "SEM-SKU").slice(0, 60),
+    produto: String(b.produto || "Produto").slice(0, 160),
+    canais,
+    completo: String(b.completo || "").slice(0, 90000)
+  };
+  let r;
+  try {
+    r = await fetch(h.toString(), {
+      method: "POST",
+      headers: { "content-type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+      redirect: "follow"
+    });
+  } catch (e) { return json({ error: "Não consegui falar com o Drive: " + e }, 502); }
+  const t = await r.text();
+  try { return json(JSON.parse(t)); }
+  catch (e) { return json({ error: "O script do Drive respondeu algo inesperado. Confira se ele foi publicado com acesso para Qualquer pessoa. Resposta: " + t.slice(0, 200) }, 502); }
+}
+
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -256,6 +383,12 @@ export default {
     }
     if (url.pathname === "/api/fix" && request.method === "POST") {
       return handleFix(request, env);
+    }
+    if (url.pathname === "/api/sku" && request.method === "GET") {
+      return handleSku(request);
+    }
+    if (url.pathname === "/api/arquivar" && request.method === "POST") {
+      return handleArquivar(request);
     }
     return new Response(HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
   }
@@ -304,6 +437,14 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 <div>
  <div class="card"><h2>1 · O que vamos fazer?</h2>
   <div class="chips" id="modo"><div class="chip on" data-v="Criar anúncio novo">Criar novo</div><div class="chip" data-v="Otimizar existente">Otimizar</div><div class="chip" data-v="Replicar em outra cor/variação">Replicar cor</div><div class="chip" data-v="Adaptar para outro canal">Adaptar canal</div></div></div>
+ <div class="card"><h2>1.5 · Buscar da minha planilha</h2>
+  <p class="hint">Digite o SKU e eu puxo nome, marca, custo, preço e margem direto do seu PAINEL no Drive.</p>
+  <div class="g2"><div class="field"><label>SKU</label><input id="sku" placeholder="FER-0053"></div><div class="field"><label>&nbsp;</label><button id="bsku" class="btn btn-p" style="width:100%">🔎 Buscar na planilha</button></div></div>
+  <div id="skuout" style="display:none;font-size:.85rem;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:8px;margin-top:8px"></div>
+  <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.85rem;color:var(--muted)">⚙️ Configurar o link da planilha (só uma vez)</summary>
+   <p class="hint" style="margin-top:8px">Na sua planilha PAINEL: <strong>Arquivo → Compartilhar → Publicar na web → escolha CSV → Publicar</strong>. Copie o link que aparecer e cole aqui.</p>
+   <div class="field"><input id="csvurl" placeholder="https://docs.google.com/spreadsheets/d/e/..../pub?output=csv"></div>
+   <button id="bcsv" class="btn btn-g" style="margin-top:6px">Salvar link</button></details></div>
  <div class="card"><h2>2 · Fotos reais do produto <span class="req">*</span></h2><p class="hint">Até 4 fotos (ângulos diferentes ajudam). Elas garantem que as imagens geradas fiquem idênticas ao seu produto.</p>
   <label class="imgbtn" for="img">📷 <strong>Importar fotos (até 4)</strong></label><input id="img" type="file" accept="image/*" multiple hidden><div class="thumbs" id="thumbs"></div></div>
  <div class="card"><h2>3 · Informações do produto</h2>
@@ -328,6 +469,17 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <div class="spin" id="spin">⏳ Criando o anúncio completo… pode levar 2 a 5 min. Não feche a página.</div>
   <div id="out" style="display:none"></div>
   <button class="btn btn-g" id="copy" style="display:none">📎 Copiar tudo</button></div>
+ <div class="card" id="canalcard" style="display:none"><h2>📋 Pronto para publicar (por canal)</h2>
+  <p class="hint">Clique no canal, copie campo por campo e cole direto na plataforma.</p>
+  <div class="chips" id="cchips" style="margin-bottom:10px"></div>
+  <div id="cfields"></div>
+  <button class="btn btn-g" id="baixar" style="margin-top:10px">⬇️ Baixar tudo (1 arquivo por canal)</button>
+  <button class="btn btn-p" id="arquivar" style="margin-top:8px">☁️ Arquivar no Drive</button>
+  <div id="arqout" style="display:none;font-size:.85rem;margin-top:8px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:8px"></div>
+  <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.85rem;color:var(--muted)">⚙️ Configurar o arquivamento no Drive (só uma vez)</summary>
+   <p class="hint" style="margin-top:8px">Cole aqui o link do script de arquivamento. O passo a passo está no documento <strong>COMO LIGAR O APP AO DRIVE</strong>, na sua pasta ANÚNCIOS SAYONARA.</p>
+   <div class="field"><input id="gsurl" placeholder="https://script.google.com/macros/s/..../exec"></div>
+   <button class="btn btn-g" id="bgs" style="margin-top:6px">Salvar link</button></details></div>
  <div class="card"><h2>🎨 2 · Gerar imagem</h2><p class="hint">Clique numa imagem abaixo (o prompt entra sozinho) e gere. Usa a foto do passo 2 como referência. (~R$0,25/imagem)</p>
   <div class="chips" id="ichips" style="margin-bottom:8px"></div>
   <textarea id="iprompt" placeholder="Gere o anúncio no passo 1 — os prompts aparecem aqui. Ou cole um prompt seu."></textarea>
@@ -371,6 +523,7 @@ inp.onchange=function(){[].forEach.call(inp.files,function(f){if(imgs.length>=4)
 th.onclick=function(e){if(e.target.dataset&&e.target.dataset.x!==undefined&&e.target.dataset.x!==''){imgs.splice(Number(e.target.dataset.x),1);renderThumbs()}};
 document.getElementById('ct').onchange=function(){document.getElementById('cb').classList.toggle('show',this.checked)};
 function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação: '+one('modo')+'\n';t+='Profundidade: '+one('prof')+'\n';t+='Canais: '+(many('canais').join(', ')||'[CONFIRMAR]')+'\n\nPRODUTO:\n';
+ var _sk=v('sku');if(_sk)t+='SKU: '+_sk+'\n';
  t+='Nome: '+(v('nome')||'[CONFIRMAR]')+'\n';t+='Marca oficial: '+(c?(v('marcaReal')||'[CONFIRMAR]'):(v('marca')||'Sayonara'))+'\n';
  [['Categoria','cat'],['Cor/Variação','cor'],['Preço','preco'],['Voltagem','volt'],['Capacidade/Potência','cap'],['EAN/GTIN','ean'],['Medidas','med'],['Peso','peso'],['Garantia','gar'],['Diferenciais','dif'],['INMETRO','inmetro']].forEach(function(p){var val=v(p[1]);if(val)t+=p[0]+': '+val+'\n'});
  if(c){t+='\nPRODUTO COMPATÍVEL: aplicar Regra de Ouro. Marca real: '+(v('marcaReal')||'[CONFIRMAR]')+'. Compatível com: '+(v('marcaOrig')||'[CONFIRMAR]')+'. Nunca usar "original" para o produto.\n'}
@@ -386,6 +539,79 @@ function montarChips(imgs,cenas){
  if(ic.children.length){ic.children[0].click()}
  if(vc.children.length){vc.children[0].click()}
 }
+var canais=[];
+var ROT=['TITULO ALTERNATIVO','TITULO','FICHA TECNICA','BULLETS','DESCRICAO','PALAVRAS-CHAVE','ROTEIRO DO VIDEO','OBSERVACOES DO CANAL'];
+function parseCanais(t){var out=[],re=/\[\[CANAL:\s*([^\]]+)\]\]([\s\S]*?)\[\[\/CANAL\]\]/g,m;while((m=re.exec(t||''))){out.push({nome:m[1].trim(),texto:m[2].trim()})}return out}
+function campos(txt){var cur=null,res=[];
+ (txt||'').split('\n').forEach(function(l){var hit=null,U=l.toUpperCase();
+  for(var i=0;i<ROT.length;i++){if(U.indexOf(ROT[i]+':')===0){hit=ROT[i];break}}
+  if(hit){cur={rot:hit,val:l.slice(hit.length+1).trim()};res.push(cur)}
+  else if(cur){cur.val+=(cur.val?'\n':'')+l}});
+ return res.map(function(c){c.val=c.val.trim();return c}).filter(function(c){return c.val&&c.val!=='-'})}
+function verCanal(i){var c=canais[i],box=document.getElementById('cfields');box.innerHTML='';
+ campos(c.texto).forEach(function(f){
+  var d=document.createElement('div');d.style.marginBottom='12px';
+  var h=document.createElement('div');h.style.cssText='font-size:.72rem;font-weight:700;color:#64748b;letter-spacing:.4px;margin-bottom:4px';h.textContent=f.rot;
+  var ta=document.createElement('textarea');ta.value=f.val;ta.style.minHeight=(f.val.length>200?'120px':'44px');
+  var b=document.createElement('button');b.className='btn btn-g';b.style.marginTop='4px';b.textContent='📎 Copiar';
+  b.onclick=function(){ta.select();try{document.execCommand('copy')}catch(e){}try{navigator.clipboard.writeText(ta.value)}catch(e){}b.textContent='✅ Copiado!';setTimeout(function(){b.textContent='📎 Copiar'},1500)};
+  d.appendChild(h);d.appendChild(ta);d.appendChild(b);box.appendChild(d)})}
+function montarCanais(t){canais=parseCanais(t);
+ var card=document.getElementById('canalcard'),cc=document.getElementById('cchips');cc.innerHTML='';
+ if(!canais.length){card.style.display='none';return}
+ card.style.display='block';
+ canais.forEach(function(c,i){var d=document.createElement('div');d.className='chip';d.textContent=c.nome;
+  d.onclick=function(){[].forEach.call(cc.children,function(x){x.classList.remove('on')});d.classList.add('on');verCanal(i)};cc.appendChild(d)});
+ cc.children[0].click()}
+function gsUrl(){try{return localStorage.getItem('ap_gs')||''}catch(e){return ''}}
+try{document.getElementById('gsurl').value=gsUrl()}catch(e){}
+document.getElementById('bgs').onclick=function(){var u=document.getElementById('gsurl').value.trim();
+ try{localStorage.setItem('ap_gs',u)}catch(e){}
+ var b=document.getElementById('arqout');b.style.display='block';b.innerHTML=u?'✅ Link salvo. Agora o botão Arquivar no Drive já funciona.':'Link apagado.'};
+document.getElementById('baixar').onclick=function(){var sku=v('sku')||v('nome')||'produto';
+ canais.forEach(function(c,i){setTimeout(function(){
+  var blob=new Blob([sku+' — '+c.nome+'\n\n'+c.texto],{type:'text/plain;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(sku+' - '+c.nome+'.txt').replace(/[\\/:*?"<>|]/g,'-');
+  document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(a.href)},4000)},i*400)})};
+document.getElementById('arquivar').onclick=function(){
+ var u=gsUrl(),b=document.getElementById('arqout'),btn=this;b.style.display='block';
+ if(!u){b.innerHTML='⚙️ Antes cole o link do script em "Configurar o arquivamento no Drive", logo abaixo.';return}
+ if(!canais.length){b.innerHTML='Gere um anúncio primeiro.';return}
+ b.innerHTML='Enviando para o Drive…';btn.disabled=true;
+ fetch('/api/arquivar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({destino:u,sku:v('sku')||'SEM-SKU',produto:v('nome')||'Produto',canais:canais,completo:document.getElementById('out').textContent||''})})
+ .then(function(r){return r.json()}).then(function(j){btn.disabled=false;
+  if(j.error){b.innerHTML='⚠️ '+esc(j.error);return}
+  var h='✅ Arquivado em <strong>'+esc(j.pasta||'Drive')+'</strong>';
+  if(j.link)h+=' — <a href="'+esc(j.link)+'" target="_blank">abrir pasta</a>';
+  if(j.arquivos&&j.arquivos.length)h+='<br>'+j.arquivos.map(esc).join('<br>');
+  b.innerHTML=h}).catch(function(e){btn.disabled=false;b.innerHTML='⚠️ Falha: '+esc(e)})};
+var skuData=null;
+function esc(x){return String(x==null?'':x).replace(/[&<>]/g,function(c){return c==='&'?'&amp;':(c==='<'?'&lt;':'&gt;')})}
+function csvUrl(){try{return localStorage.getItem('ap_csv')||''}catch(e){return ''}}
+try{document.getElementById('csvurl').value=csvUrl()}catch(e){}
+document.getElementById('bcsv').onclick=function(){
+ var u=document.getElementById('csvurl').value.trim();
+ try{localStorage.setItem('ap_csv',u)}catch(e){}
+ var b=document.getElementById('skuout');b.style.display='block';
+ b.innerHTML=u?'✅ Link salvo. Agora digite o SKU e clique em Buscar.':'Link apagado.'};
+document.getElementById('bsku').onclick=function(){
+ var u=csvUrl(),s=v('sku'),box=document.getElementById('skuout');
+ box.style.display='block';
+ if(!u){box.innerHTML='⚙️ Antes cole o link da planilha em "Configurar o link da planilha (só uma vez)" logo abaixo.';return}
+ if(!s){box.innerHTML='Digite o SKU (ex.: FER-0053).';return}
+ box.innerHTML='Procurando na planilha...';
+ fetch('/api/sku?u='+encodeURIComponent(u)+'&sku='+encodeURIComponent(s))
+ .then(function(r){return r.json()}).then(function(j){
+  if(j.error){skuData=null;box.innerHTML='⚠️ '+esc(j.error);return}
+  skuData=j;
+  if(j.nome)document.getElementById('nome').value=j.nome;
+  if(j.marca)document.getElementById('marca').value=j.marca;
+  if(j.preco)document.getElementById('preco').value=j.preco;
+  var h='✅ <strong>'+esc(j.sku)+'</strong> — '+esc(j.nome)+'<br>Custo <strong>R$ '+esc(j.custo||'?')+'</strong> · Venda <strong>R$ '+esc(j.preco||'?')+'</strong> · Margem <strong>R$ '+esc(j.margem||'?')+'</strong>'+(j.pct?' ('+esc(j.pct)+')':'');
+  if(j.obs)h+='<br>Obs.: '+esc(j.obs);
+  h+='<br><span style="color:#64748b">Nome, marca e preço já foram preenchidos abaixo. O custo fica só aqui na tela — não vai para o texto do anúncio.</span>';
+  box.innerHTML=h;
+ }).catch(function(e){box.innerHTML='⚠️ Falha de rede: '+esc(e)})};
 document.getElementById('go').onclick=function(){
  if(!v('nome')){alert('Preencha ao menos o Nome do produto.');return}
  var btn=this;btn.disabled=true;document.getElementById('spin').style.display='block';
@@ -394,7 +620,7 @@ document.getElementById('go').onclick=function(){
  .then(function(r){return r.json()}).then(function(j){
    btn.disabled=false;document.getElementById('spin').style.display='none';
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
-   if(j.result){document.getElementById('copy').style.display='block';montarChips(j.imagens||[],j.cenas||[]);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
+   if(j.result){document.getElementById('copy').style.display='block';montarChips(j.imagens||[],j.cenas||[]);montarCanais(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
  }).catch(function(e){btn.disabled=false;document.getElementById('spin').style.display='none';out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
 document.getElementById('goimg').onclick=function(){
  var p=v('iprompt');if(!p){alert('Cole o prompt da imagem primeiro.');return}
@@ -455,5 +681,5 @@ document.getElementById('goifix').onclick=function(){corrigir('imagem','iprompt'
 document.getElementById('govfix').onclick=function(){corrigir('video','vprompt','vfix',this,'\ud83d\udd27 Corrigir prompt da cena',null)};
 document.getElementById('gopfix').onclick=function(){corrigir('video','vprompt','pfix',this,'\ud83d\udd27 Corrigir e gerar prévia de novo',function(){document.getElementById('goprev').click()})};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
-try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';montarChips(_d.imagens||[],_d.cenas||[])}}}catch(x){}
+try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';montarChips(_d.imagens||[],_d.cenas||[]);montarCanais(_d.result)}}}catch(x){}
 </script></body></html>`;
