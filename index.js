@@ -336,15 +336,18 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <div id="iout" style="display:none;margin-top:10px"><img id="iimg" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"><a id="idl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="imagem-anuncio.png">⬇️ Baixar imagem</a>
    <label style="margin-top:10px">🔧 Não ficou boa? Diga o que mudar:</label><textarea id="ifix" style="min-height:48px" placeholder="Ex.: fundo mais claro, tira o texto, produto maior..."></textarea>
    <button class="btn btn-g" id="goifix">🔧 Corrigir e gerar de novo</button></div></div>
- <div class="card"><h2>🎬 3 · Gerar vídeo (Sora)</h2><p class="hint">Clique numa cena (o prompt entra sozinho), escolha o estilo, suba a foto real, veja a prévia barata e só então gere o vídeo. (4s ~R$2 · 12s ~R$6)</p>
+ <div class="card"><h2>🎬 3 · Gerar vídeo (Sora)</h2><p class="hint">Clique numa cena (o prompt entra sozinho), escolha o estilo, suba as fotos reais (uma de cada produto), veja a prévia barata, corrija o que estiver errado e só então gere o vídeo. (4s ~R$2 · 12s ~R$6)</p>
   <div class="chips" id="vchips" style="margin-bottom:8px"></div>
   <label>Estilo do vídeo</label><div class="chips" id="vstyle" style="margin-bottom:8px"><div class="chip on" data-v="produto">📦 Produto</div><div class="chip" data-v="apresentador">🧑‍💼 Apresentador falando</div><div class="chip" data-v="lifestyle">🏠 Lifestyle</div></div>
-  <label class="imgbtn" for="vimgIn" style="padding:10px;margin-bottom:8px;display:block">📷 <strong>Foto real do produto</strong> (pro vídeo não inventar)</label><input id="vimgIn" type="file" accept="image/*" hidden><div class="thumbs" id="vthumbs" style="margin:0 0 8px"></div>
+  <label class="imgbtn" for="vimgIn" style="padding:10px;margin-bottom:8px;display:block">📷 <strong>Fotos reais</strong> (até 4 — ex.: 1 do purificador + 1 do refil)</label><input id="vimgIn" type="file" accept="image/*" multiple hidden><div class="thumbs" id="vthumbs" style="margin:0 0 8px"></div>
   <textarea id="vprompt" placeholder="Gere o anúncio no passo 1 — as cenas aparecem aqui."></textarea>
   <div class="g2" style="margin-top:8px"><div class="field"><label>Duração</label><select id="vsec"><option value="4">4 segundos</option><option value="8">8 segundos</option><option value="12">12 segundos (max. da IA)</option></select></div><div class="field"><label>Formato</label><select id="vsize"><option value="720x1280">Vertical (Stories/Reels)</option><option value="1280x720">Horizontal</option></select></div></div>
   <button class="btn btn-g" id="goprev" style="margin-top:0">👁️ Prévia da cena (imagem ~R$0,25)</button>
   <div class="spin" id="pspin">⏳ Gerando prévia…</div>
-  <div id="pout" style="display:none;margin-top:8px;text-align:center"><img id="pimg" style="max-width:70%;border-radius:10px;border:1px solid var(--line)"></div>
+  <div id="pout" style="display:none;margin-top:8px;text-align:center"><img id="pimg" style="max-width:70%;border-radius:10px;border:1px solid var(--line)">
+   <label style="margin-top:10px;text-align:left">🔧 Não ficou boa? Diga o que mudar (eu viro prompt):</label><textarea id="pfix" style="min-height:56px" placeholder="Ex.: o refil ficou maior que o purificador. O refil é um cartucho pequeno, cabe na mão; o purificador é bem maior. Tira o texto errado do produto."></textarea>
+   <button class="btn btn-g" id="gopfix">🔧 Corrigir e gerar prévia de novo</button>
+   <label class="imgbtn" for="vimgIn" style="padding:8px;margin-top:8px;display:block">➕ Mandar mais uma foto real (ajuda a acertar tamanho e detalhes)</label></div>
   <button class="btn btn-p" id="govid" style="margin-top:8px">🎬 Gerar vídeo</button>
   <div class="spin" id="vspin">⏳ Gerando vídeo… pode levar até 5 min. Não feche a página.</div>
   <div id="vout" style="display:none;margin-top:10px"><video id="vvid" controls style="max-width:100%;border-radius:10px;border:1px solid var(--line)"></video><a id="vdl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="video-anuncio.mp4">⬇️ Baixar vídeo</a>
@@ -403,17 +406,23 @@ document.getElementById('goimg').onclick=function(){
   else{alert(j.error||'Erro desconhecido.')}
  }).catch(function(e){btn.disabled=false;document.getElementById('ispin').style.display='none';alert('Falha de rede: '+e)});
 };
-var vimg=null;
+var vimgs=[];
 var vin=document.getElementById('vimgIn'),vth=document.getElementById('vthumbs');
-vin.onchange=function(){var f=vin.files[0];if(!f)return;var r=new FileReader();r.onload=function(){vimg={url:r.result};vth.innerHTML='<div class="thumb"><img src="'+r.result+'"><span data-x="1">×</span></div>'};r.readAsDataURL(f);vin.value='';};
-vth.onclick=function(e){if(e.target.dataset&&e.target.dataset.x){vimg=null;vth.innerHTML=''}};
-function refDados(){var ref=vimg||imgs[0];if(!ref)return null;return{b64:ref.data||ref.url.split(',')[1],mt:ref.media||ref.url.slice(5,ref.url.indexOf(';'))}}
-function refVideo(cb){var ref=vimg||imgs[0];if(!ref){cb(null);return}var dims=v('vsize')==='1280x720'?[1280,720]:[720,1280];var im=new Image();im.onload=function(){var c=document.createElement('canvas');c.width=dims[0];c.height=dims[1];var x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);var e=Math.min(c.width/im.width,c.height/im.height);var nw=im.width*e,nh=im.height*e;x.drawImage(im,(c.width-nw)/2,(c.height-nh)/2,nw,nh);cb(c.toDataURL('image/png').split(',')[1])};im.onerror=function(){cb(null)};im.src=ref.url}
+function vRender(){vth.innerHTML=vimgs.map(function(o,i){return '<div class="thumb"><img src="'+o.url+'"><span data-x="'+i+'">×</span></div>'}).join('')}
+vin.onchange=function(){[].forEach.call(vin.files,function(f){if(vimgs.length>=4)return;var r=new FileReader();r.onload=function(){vimgs.push({data:r.result.split(',')[1],media:f.type,url:r.result});vRender()};r.readAsDataURL(f)});vin.value='';};
+vth.onclick=function(e){if(e.target.dataset&&e.target.dataset.x!==undefined&&e.target.dataset.x!==''){vimgs.splice(Number(e.target.dataset.x),1);vRender()}};
+function refLista(){var a=vimgs.length?vimgs:imgs;return a.slice(0,4).map(function(o){return{data:o.data,media:o.media}})}
+function escala(p){var n=refLista().length;if(!n)return p;
+ var t=p+' FIDELIDADE AO PRODUTO: reproduza o(s) produto(s) EXATAMENTE como nas fotos de referencia - mesmo formato, mesmas cores, mesma marca e mesmos textos do rotulo (nao invente nem distorca letras).';
+ if(n>1)t+=' Sao '+n+' produtos diferentes nas referencias: respeite o TAMANHO REAL e a PROPORCAO entre eles (o refil/cartucho e bem menor que o purificador, cabe na mao). Nunca aumente o item menor nem encolha o maior.';
+ else t+=' Mantenha a escala real do produto em relacao a pessoa e ao ambiente.';
+ return t}
+function refVideo(cb){var ref=vimgs[0]||imgs[0];if(!ref){cb(null);return}var dims=v('vsize')==='1280x720'?[1280,720]:[720,1280];var im=new Image();im.onload=function(){var c=document.createElement('canvas');c.width=dims[0];c.height=dims[1];var x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);var e=Math.min(c.width/im.width,c.height/im.height);var nw=im.width*e,nh=im.height*e;x.drawImage(im,(c.width-nw)/2,(c.height-nh)/2,nw,nh);cb(c.toDataURL('image/png').split(',')[1])};im.onerror=function(){cb(null)};im.src=ref.url}
 document.getElementById('govid').onclick=function(){
  var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
  var btn=this;btn.disabled=true;document.getElementById('vspin').style.display='block';document.getElementById('vout').style.display='none';
  refVideo(function(b64){
- fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:estiloVid(p),seconds:v('vsec'),size:v('vsize'),imageBase64:b64,mediaType:b64?'image/png':null})})
+ fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:escala(estiloVid(p)),seconds:v('vsec'),size:v('vsize'),imageBase64:b64,mediaType:b64?'image/png':null})})
  .then(function(r){return r.json()}).then(function(j){
   btn.disabled=false;document.getElementById('vspin').style.display='none';
   if(j.video){var u='data:video/mp4;base64,'+j.video;document.getElementById('vvid').src=u;document.getElementById('vdl').href=u;document.getElementById('vout').style.display='block'}
@@ -424,8 +433,8 @@ document.getElementById('govid').onclick=function(){
 document.getElementById('goprev').onclick=function(){
  var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
  var btn=this;btn.disabled=true;document.getElementById('pspin').style.display='block';document.getElementById('pout').style.display='none';
- var rd=refDados();var sz=v('vsize')==='1280x720'?'1536x1024':'1024x1536';
- fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:estiloVid(p)+' (quadro estatico do video, sem texto na imagem)',size:sz,imageBase64:rd?rd.b64:null,mediaType:rd?rd.mt:null})})
+ var rd=refLista();var sz=v('vsize')==='1280x720'?'1536x1024':'1024x1536';
+ fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:escala(estiloVid(p))+' (quadro estatico do video, sem texto na imagem)',size:sz,imagens:rd})})
  .then(function(r){return r.json()}).then(function(j){
   btn.disabled=false;document.getElementById('pspin').style.display='none';
   if(j.image){document.getElementById('pimg').src='data:image/png;base64,'+j.image;document.getElementById('pout').style.display='block'}
@@ -444,6 +453,7 @@ function corrigir(tipo,campoPrompt,campoFix,btn,rotulo,depois){
 }
 document.getElementById('goifix').onclick=function(){corrigir('imagem','iprompt','ifix',this,'\ud83d\udd27 Corrigir e gerar de novo',function(){document.getElementById('goimg').click()})};
 document.getElementById('govfix').onclick=function(){corrigir('video','vprompt','vfix',this,'\ud83d\udd27 Corrigir prompt da cena',null)};
+document.getElementById('gopfix').onclick=function(){corrigir('video','vprompt','pfix',this,'\ud83d\udd27 Corrigir e gerar prévia de novo',function(){document.getElementById('goprev').click()})};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
 try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';montarChips(_d.imagens||[],_d.cenas||[])}}}catch(x){}
 </script></body></html>`;
