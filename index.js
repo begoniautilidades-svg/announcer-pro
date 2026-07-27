@@ -32,8 +32,11 @@ FORMATO DA ENTREGA (markdown), adaptando profundidade ao pedido:
 5. Bullets, FAQ, objeções tratadas, ficha técnica, conteúdo da embalagem, avisos
 6. CONTEUDO A+ DA AMAZON pronto pra colar (padrao dos melhores vendedores: modulo hero com headline forte, 3 modulos de beneficio com titulo curto + texto + sugestao de imagem, tabela comparativa com modelos da linha, FAQ visual) E CONTEUDO ADICIONAL DO CATALOGO ML (rich content: blocos de texto persuasivo + sugestoes de banner), ambos seguindo as praticas dos anuncios campeoes da categoria
 7. Roteiro + prompts das 9 imagens
-8. Nota final 0–100 + plano de melhoria (sempre incluir, logo apos as imagens)
-9. (se pedido completo) PROMPTS DE VIDEO prontos para a IA (Sora do proprio painel): dividir o comercial em 2 a 3 CENAS INDEPENDENTES de ate 12 segundos cada, uma por bloco separado e numerado (CENA 1, CENA 2...), cada bloco com prompt completo e autonomo pronto pra colar (produto, acao, movimento de camera, luz, estilo, sem texto na tela), indicando a duracao exata (4, 8 ou 12s) e o formato (vertical 720x1280 para Stories/Reels); ao final, a ordem de montagem das cenas para formar o video de 15-30s e 1 sugestao de trilha/ritmo. Depois, estrategia comercial.
+8. PROMPTS DE VIDEO - OBRIGATORIO EM TODOS OS MODOS, NUNCA CORTAR: prontos para a IA (Sora do proprio painel): dividir o comercial em 2 a 3 CENAS INDEPENDENTES de ate 12 segundos cada, uma por bloco separado e numerado (CENA 1, CENA 2...), cada bloco com prompt completo e autonomo pronto pra colar (produto, acao, movimento de camera, luz, estilo, sem texto na tela), indicando a duracao exata (4, 8 ou 12s) e o formato (vertical 720x1280 para Stories/Reels); ao final, a ordem de montagem das cenas para formar o video de 15-30s e 1 sugestao de trilha/ritmo
+9. Nota final 0–100 + plano de melhoria
+10. (se pedido completo) estrategia comercial resumida.
+
+PRIORIDADE DE ESPACO: se a resposta ficar longa, RESUMA as secoes 5 e 6 (FAQ com menos perguntas, A+ mais enxuto) para GARANTIR que as secoes 8 (video), 9 (nota) e o bloco ===DADOS=== saiam completos. Eles nunca podem faltar.
 
 OBRIGATORIO EM TODOS OS MODOS (inclusive Rapido): termine a resposta com uma linha contendo exatamente ===DADOS=== e, na linha seguinte, um JSON valido em UMA unica linha no formato {"imagens":["prompt completo da imagem 1","prompt da imagem 2"],"cenas":[{"seg":"8","prompt":"prompt completo da cena 1"}]} - "imagens" com ate 9 itens (minimo 3), "cenas" com 2 a 3 itens, "seg" apenas "4", "8" ou "12". Os prompts do JSON devem ser os MESMOS das secoes de imagens e video, completos e autonomos (em portugues, descrevendo produto, cena, luz, estilo). Nada depois do JSON.`;
 
@@ -59,7 +62,7 @@ async function handleGenerate(request, env) {
 
   const payload = {
     model: env.MODEL || "claude-3-5-sonnet-latest",
-    max_tokens: 16000,
+    max_tokens: 24000,
     stream: true,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content }]
