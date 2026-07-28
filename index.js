@@ -492,7 +492,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
  <div class="card"><h2>3 · Informações do produto</h2>
   <div class="g3"><div class="field"><label>SKU</label><input id="sku2" placeholder="FER-0053"></div><div class="field"><label>Nome <span class="req">*</span></label><input id="nome" placeholder="Panela de Pressão 4,2L"></div><div class="field"><label>Marca</label><input id="marca" value="Sayonara"></div></div>
   <p class="hint" style="margin:-4px 0 10px">O SKU é o nome da pasta no Drive e do arquivo baixado. É o mesmo campo do bloco 1 — preencher em um preenche o outro.</p>
-  <div class="field"><label>Medidas</label><input id="med" placeholder="43 x 33 x 35 cm"><p class="hint" style="margin:6px 0 0">Vai junto para o STUDIO e enche o Contrato de medidas sozinho.</p></div></div>
+  <div class="field"><label>Medidas</label><input id="med" placeholder="43 x 33 x 35 cm"><p class="hint" style="margin:6px 0 0">Vai junto para o STUDIO e enche o Contrato de medidas sozinho.</p></div><div id="medask" style="display:none;margin-top:10px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;padding:10px;font-size:.85rem;line-height:1.5"></div></div>
  <div class="card"><h2>4 · É refil/compatível?</h2><p class="hint">Liga a Regra de Ouro (protege de bloqueio).</p>
   <div class="sw"><label class="switch"><input type="checkbox" id="ct"><span class="sl"></span></label><span style="font-size:.85rem">Sim, é compatível</span></div>
   <div class="compat" id="cb"><div class="g2"><div class="field"><label>Marca REAL do produto</label><input id="marcaReal" placeholder="Hidro Filtros"></div><div class="field"><label>Compatível com (original)</label><input id="marcaOrig" placeholder="IBBL FR600"></div></div></div></div>
@@ -668,6 +668,52 @@ document.getElementById('bsku').onclick=function(){
   h+='<br><span style="color:#64748b">Nome e marca já foram preenchidos abaixo. Custo e preço ficam só aqui na tela — não vão para o texto do anúncio.</span>';
   box.innerHTML=h;
  }).catch(function(e){box.innerHTML='⚠️ Falha de rede: '+esc(e)})};
+/* ---- medidas achadas no anuncio: NUNCA preenche sozinho, sempre pergunta ---- */
+var MED_SUG='';
+function normMed(x){return String(x==null?'':x).toLowerCase().replace(/×/g,'x').replace(/,/g,'.').replace(/\s+/g,'')}
+function acharMedidas(t){
+ if(!t)return '';
+ var s=String(t).replace(/ /g,' ');
+ var best='',bn=0,m;
+ var re=/(\d{1,4}(?:[.,]\d{1,3})?)\s*(cm|mm)?\s*[x×X]\s*(\d{1,4}(?:[.,]\d{1,3})?)\s*(cm|mm)?(?:\s*[x×X]\s*(\d{1,4}(?:[.,]\d{1,3})?)\s*(cm|mm)?)?/g;
+ while((m=re.exec(s))!==null){
+  var u=m[2]||m[4]||m[6]||'';
+  if(!u){var mu=s.substr(m.index+m[0].length,10).match(/^[\s.,)]*(cm|mm)/i);if(mu)u=mu[1]}
+  if(!u)continue;
+  var ns=[m[1],m[3]];if(m[5])ns.push(m[5]);
+  if(ns.length>bn){bn=ns.length;best=ns.join(' x ')+' '+u.toLowerCase()}
+ }
+ if(best)return best;
+ var rot=[['altura',0],['comprimento',0],['largura',1],['di[âa]metro',1],['profundidade',2],['espessura',2]];
+ var got=[null,null,null],un='';
+ for(var i=0;i<rot.length;i++){
+  var g=s.match(new RegExp(rot[i][0]+'\\s*(?:aproximad[ao]|total|externa?)?\\s*[:=]?\\s*(\\d{1,4}(?:[.,]\\d{1,3})?)\\s*(cm|mm)','i'));
+  if(g&&got[rot[i][1]]==null){got[rot[i][1]]=g[1];if(!un)un=g[2]}
+ }
+ var lim=[];for(var k=0;k<3;k++){if(got[k]!=null)lim.push(got[k])}
+ if(lim.length>=2)return lim.join(' x ')+' '+un.toLowerCase();
+ return '';
+}
+function pedirMedidas(t){
+ var box=document.getElementById('medask');if(!box)return;
+ var sug=acharMedidas(t),atual=v('med');
+ if(!sug||normMed(sug)===normMed(atual)){box.style.display='none';return}
+ MED_SUG=sug;
+ var h='📏 <strong>Achei estas medidas no anúncio: '+esc(sug)+'</strong><br>';
+ h+='<span style="color:#9a3412">Confira na embalagem ou com a fita métrica antes de usar. A IA às vezes chuta medida, e medida errada estraga o vídeo inteiro.</span>';
+ if(atual)h+='<br><span style="color:#9a3412">O campo hoje está com <strong>'+esc(atual)+'</strong> — usar vai substituir.</span>';
+ h+='<div style="margin-top:8px"><button id="medok" class="btn btn-p" style="padding:6px 12px;font-size:.82rem;margin-top:0">✅ Conferi, está certo</button> ';
+ h+='<button id="medno" class="btn btn-g" style="padding:6px 12px;font-size:.82rem;margin-top:0">Deixa como está</button></div>';
+ box.innerHTML=h;box.style.display='block';
+ document.getElementById('medok').onclick=function(){
+  var e=document.getElementById('med');
+  if(e){e.value=MED_SUG;e.dispatchEvent(new Event('input',{bubbles:true}))}
+  box.innerHTML='✅ Você confirmou <strong>'+esc(MED_SUG)+'</strong>. Já está no campo Medidas e vai junto para o STUDIO.';
+ };
+ document.getElementById('medno').onclick=function(){
+  box.innerHTML='Beleza — não mexi em nada. O campo Medidas continua do seu jeito.';
+ };
+}
 document.getElementById('go').onclick=function(){
  if(!v('nome')){alert('Preencha ao menos o Nome do produto.');return}
  var btn=this;btn.disabled=true;document.getElementById('spin').style.display='block';
@@ -676,7 +722,7 @@ document.getElementById('go').onclick=function(){
  .then(function(r){return r.json()}).then(function(j){
    btn.disabled=false;document.getElementById('spin').style.display='none';
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
-   if(j.result){document.getElementById('copy').style.display='block';montarChips(j.imagens||[],j.cenas||[]);montarCanais(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
+   if(j.result){document.getElementById('copy').style.display='block';montarChips(j.imagens||[],j.cenas||[]);montarCanais(j.result);pedirMedidas(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
  }).catch(function(e){btn.disabled=false;document.getElementById('spin').style.display='none';out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
 document.getElementById('gopro').onclick=function(){var t=document.getElementById('iprompt');var q=t.value.trim();if(!q){alert('Escolha uma imagem na lista acima ou cole um prompt primeiro.');return}t.value=montaPrompt(q);t.scrollTop=0};
 document.getElementById('goimg').onclick=function(){
