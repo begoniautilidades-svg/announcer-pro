@@ -496,13 +496,13 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <p class="hint" style="margin:8px 0 0">Quanto mais você escrever aqui, melhor sai o anúncio. Pode escrever tudo junto ou uma coisa por linha — tanto faz.</p>
   <div class="g2" style="margin-top:10px"><div class="field"><label>Meu anúncio atual (p/ otimizar)</label><input id="linkMeu" placeholder="https://..."></div><div class="field"><label>Produto similar (base)</label><input id="linkSim" placeholder="https://..."></div></div></div>
  <div class="card"><h2>6 · Canais e profundidade</h2>
-  <label>Canais</label><div class="chips" id="canais" style="margin-bottom:12px"><div class="chip on" data-v="Mercado Livre">Mercado Livre</div><div class="chip" data-v="Shopee">Shopee</div><div class="chip" data-v="Amazon">Amazon</div><div class="chip" data-v="Magalu">Magalu</div><div class="chip" data-v="TikTok Shop">TikTok Shop</div><div class="chip" data-v="Google Shopping">Google Shopping</div></div>
+  <label>Canais</label><div class="chips" id="canais" style="margin-bottom:12px"><div class="chip on" data-v="Mercado Livre">Mercado Livre</div><div class="chip" data-v="Shopee">Shopee</div><div class="chip on" data-v="Amazon">Amazon</div><div class="chip" data-v="Magalu">Magalu</div><div class="chip" data-v="TikTok Shop">TikTok Shop</div><div class="chip" data-v="Google Shopping">Google Shopping</div></div>
   <label>Profundidade</label><div class="chips" id="prof"><div class="chip on" data-v="Pacote completo">Completo</div><div class="chip" data-v="Rápido">Rápido</div></div></div>
 </div>
 <div class="side">
  <div class="card"><h2>✨ 1 · Gerar anúncio</h2><p class="hint">Preencha à esquerda e clique. O texto sai aqui e os prompts entram sozinhos nos passos 2 e 3. O último anúncio fica salvo neste navegador — ao reabrir o site, os prompts voltam sozinhos.</p>
   <button class="btn btn-p" id="go">🚀 Gerar anúncio</button>
-  <div class="spin" id="spin">⏳ Criando o anúncio completo… pode levar 2 a 5 min. Não feche a página.</div>
+  <div class="spin" id="spin">⏳ Criando o anúncio completo… pode levar 2 a 5 min. Não feche a página.</div><p class="hint" id="spinfim" style="display:none;margin:6px 0 0"></p>
   <div id="out" style="display:none"></div>
   <button class="btn btn-g" id="copy" style="display:none">📎 Copiar tudo</button></div>
  <div class="card" id="studiocard" style="border-color:#F6ABBB;background:#FDEEF1">
@@ -710,16 +710,42 @@ function pedirMedidas(t){
   box.innerHTML='Beleza — não mexi em nada. O campo Medidas continua do seu jeito.';
  };
 }
+/* ---- contador de tempo: mostra que esta andando, nao travado ---- */
+var _TMR=null,_T0=0;
+function spinFase(d){
+ if(d<45)return 'Lendo o briefing e pesquisando o produto';
+ if(d<120)return 'Escrevendo o anuncio de cada canal';
+ if(d<200)return 'Montando o A+ da Amazon e o rich content';
+ if(d<300)return 'Criando os prompts das imagens e as cenas do video';
+ return 'Fechando a nota e a estrategia';
+}
+function mmss(d){var m=Math.floor(d/60),x=d%60;return m+':'+(x<10?'0':'')+x}
+function spinOn(){
+ var s=document.getElementById('spin'),f=document.getElementById('spinfim');
+ if(f){f.style.display='none';f.textContent=''}
+ if(!s)return;_T0=Date.now();s.style.display='block';
+ function tick(){
+  var d=Math.round((Date.now()-_T0)/1000);
+  s.innerHTML='⏳ '+spinFase(d)+'…<br><strong style="font-size:1.15rem">'+mmss(d)+'</strong> <span style="opacity:.75">de uns 2 a 5 minutos. Pode deixar a aba aberta e ir fazer outra coisa.</span>';
+ }
+ tick();if(_TMR)clearInterval(_TMR);_TMR=setInterval(tick,1000);
+}
+function spinOff(ok){
+ if(_TMR){clearInterval(_TMR);_TMR=null}
+ var s=document.getElementById('spin');if(s)s.style.display='none';
+ var f=document.getElementById('spinfim');
+ if(f&&ok&&_T0){f.textContent='✅ Pronto em '+mmss(Math.round((Date.now()-_T0)/1000))+'.';f.style.display='block'}
+}
 document.getElementById('go').onclick=function(){
  if(!v('nome')){alert('Preencha ao menos o Nome do produto.');return}
- var btn=this;btn.disabled=true;document.getElementById('spin').style.display='block';
+ var btn=this;btn.disabled=true;spinOn();
  var out=document.getElementById('out');out.style.display='none';document.getElementById('copy').style.display='none';
  fetch('/api/generate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({brief:brief(),imagens:imgs.map(function(o){return{data:o.data,media:o.media}})})})
  .then(function(r){return r.json()}).then(function(j){
-   btn.disabled=false;document.getElementById('spin').style.display='none';
+   btn.disabled=false;spinOff(!!j.result);
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
    if(j.result){document.getElementById('copy').style.display='block';montarChips(j.imagens||[],j.cenas||[]);montarCanais(j.result);pedirMedidas(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
- }).catch(function(e){btn.disabled=false;document.getElementById('spin').style.display='none';out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
+ }).catch(function(e){btn.disabled=false;spinOff(false);out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
 document.getElementById('gopro').onclick=function(){var t=document.getElementById('iprompt');var q=t.value.trim();if(!q){alert('Escolha uma imagem na lista acima ou cole um prompt primeiro.');return}t.value=montaPrompt(q);t.scrollTop=0};
 document.getElementById('goimg').onclick=function(){
  var p=v('iprompt');if(!p){alert('Cole o prompt da imagem primeiro.');return}
