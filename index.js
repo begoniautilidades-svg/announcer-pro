@@ -397,6 +397,47 @@ async function handleArquivar(request) {
   catch (e) { return json({ error: "O script do Drive respondeu algo inesperado. Confira se ele foi publicado com acesso para Qualquer pessoa. Resposta: " + t.slice(0, 200) }, 502); }
 }
 
+async function handleCadastrar(request) {
+  let b;
+  try { b = await request.json(); } catch (e) { return json({ error: "JSON inválido." }, 400); }
+  let h;
+  try { h = new URL(String(b.destino || "")); } catch (e) { return json({ error: "Configure primeiro o link do script do Google (o mesmo do arquivamento no Drive)." }, 400); }
+  if (!/(^|\.)google\.com$/.test(h.hostname)) {
+    return json({ error: "O link precisa ser do Google Apps Script (script.google.com)." }, 400);
+  }
+  let chave = "";
+  try { chave = new URL(String(b.csv || "")).searchParams.get("k") || ""; } catch (e) {}
+  const num = (x) => {
+    const s = String(x == null ? "" : x).replace(/[^0-9,.-]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
+    const n = parseFloat(s);
+    return isFinite(n) ? n : "";
+  };
+  const payload = {
+    acao: "cadastrar",
+    chave,
+    sku: String(b.sku || "").trim().slice(0, 60),
+    produto: String(b.produto || "").trim().slice(0, 160),
+    marca: String(b.marca || "").trim().slice(0, 80),
+    custo: num(b.custo),
+    preco: num(b.preco),
+    obs: String(b.obs || "").trim().slice(0, 500)
+  };
+  if (!payload.sku) return json({ error: "Digite o SKU." }, 400);
+  if (!payload.produto) return json({ error: "Digite o Nome do produto (bloco 3)." }, 400);
+  let r;
+  try {
+    r = await fetch(h.toString(), {
+      method: "POST",
+      headers: { "content-type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+      redirect: "follow"
+    });
+  } catch (e) { return json({ error: "Não consegui falar com a planilha: " + e }, 502); }
+  const t = await r.text();
+  try { return json(JSON.parse(t)); }
+  catch (e) { return json({ error: "O script do Google respondeu algo inesperado. Se você acabou de atualizar o script, publique uma NOVA VERSÃO da implantação. Resposta: " + t.slice(0, 200) }, 502); }
+}
+
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
@@ -427,6 +468,9 @@ export default {
     }
     if (url.pathname === "/api/arquivar" && request.method === "POST") {
       return handleArquivar(request);
+    }
+    if (url.pathname === "/api/cadastrar" && request.method === "POST") {
+      return handleCadastrar(request);
     }
     return new Response(HTML, { headers: { "content-type": "text/html; charset=utf-8" } });
   }
@@ -479,6 +523,12 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <p class="hint">Digite o SKU e eu puxo nome, marca, custo, preço e margem direto do seu PAINEL no Drive.</p>
   <div class="g2"><div class="field"><label>SKU</label><input id="sku" placeholder="FER-0053"></div><div class="field"><label>&nbsp;</label><button id="bsku" class="btn btn-p" style="width:100%">🔎 Buscar na planilha</button></div></div>
   <div id="skuout" style="display:none;font-size:.85rem;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:8px;margin-top:8px"></div>
+  <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.85rem;color:var(--accent-d);font-weight:700">➕ Cadastrar este produto na planilha</summary>
+   <p class="hint" style="margin-top:8px">Uso o <strong>SKU</strong> daqui de cima e o <strong>Nome</strong> e a <strong>Marca</strong> do bloco 3. Preencha custo e preço aqui. Eu mostro a linha inteira antes e só gravo depois que você clicar em confirmar.</p>
+   <div class="g2"><div class="field"><label>Custo (R$)</label><input id="custoin" placeholder="18,00"></div><div class="field"><label>Preço de venda (R$)</label><input id="precoin" placeholder="38,97"></div></div>
+   <div class="field"><label>Observações (opcional)</label><input id="obsin" placeholder="ex.: caixa com 3 unidades"></div>
+   <button id="bcad" class="btn btn-g" style="margin-top:8px">💾 Salvar na planilha</button>
+   <div id="cadout" style="display:none;font-size:.85rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px;margin-top:8px"></div></details>
   <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.85rem;color:var(--muted)">⚙️ Configurar o link da planilha (só uma vez)</summary>
    <p class="hint" style="margin-top:8px">Na sua planilha PAINEL: <strong>Arquivo → Compartilhar → Publicar na web → escolha CSV → Publicar</strong>. Copie o link que aparecer e cole aqui.</p>
    <div class="field"><input id="csvurl" placeholder="https://docs.google.com/spreadsheets/d/e/..../pub?output=csv"></div>
@@ -664,6 +714,33 @@ document.getElementById('bsku').onclick=function(){
   h+='<br><span style="color:#64748b">Nome e marca já foram preenchidos abaixo. Custo e preço ficam só aqui na tela — não vão para o texto do anúncio.</span>';
   box.innerHTML=h;
  }).catch(function(e){box.innerHTML='⚠️ Falha de rede: '+esc(e)})};
+/* ---- cadastrar na planilha: SEMPRE mostra a linha e espera confirmar ---- */
+var CAD=null;
+document.getElementById('bcad').onclick=function(){
+ var box=document.getElementById('cadout');box.style.display='block';
+ var s=v('sku'),n=v('nome'),m=v('marca'),c=v('custoin'),p=v('precoin'),o=v('obsin');
+ if(!gsUrl()){box.innerHTML='⚙️ Antes cole o link do script do Google lá embaixo, em <strong>Configurar o arquivamento no Drive</strong>. É o mesmo link.';return}
+ if(!csvUrl()){box.innerHTML='⚙️ Antes cole o link CSV da planilha logo abaixo, em <strong>Configurar o link da planilha</strong>.';return}
+ if(!s){box.innerHTML='Digite o SKU aqui em cima.';return}
+ if(!n){box.innerHTML='Digite o <strong>Nome do produto</strong> no bloco 3.';return}
+ CAD={sku:s,produto:n,marca:m,custo:c,preco:p,obs:o};
+ var h='📋 <strong>Confira antes de gravar:</strong><br>';
+ h+='SKU <strong>'+esc(s)+'</strong> · Produto <strong>'+esc(n)+'</strong><br>';
+ h+='Loja/Marca '+esc(m||'(em branco)')+' · Custo R$ '+esc(c||'(em branco)')+' · Venda R$ '+esc(p||'(em branco)')+'<br>';
+ if(o)h+='Obs.: '+esc(o)+'<br>';
+ h+='<span style="color:#92400e">Margem e Margem % a planilha calcula sozinha. Se o SKU já existir, eu atualizo a linha dele em vez de criar outra.</span><br>';
+ h+='<button class="btn btn-p" id="bcadok" style="margin-top:8px">✅ Confirmar e gravar</button> <button class="btn btn-g" id="bcadno" style="margin-top:8px">Cancelar</button>';
+ box.innerHTML=h;
+ document.getElementById('bcadno').onclick=function(){box.style.display='none';CAD=null};
+ document.getElementById('bcadok').onclick=function(){
+  var bb=this;bb.disabled=true;bb.textContent='Gravando…';
+  fetch('/api/cadastrar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({destino:gsUrl(),csv:csvUrl(),sku:CAD.sku,produto:CAD.produto,marca:CAD.marca,custo:CAD.custo,preco:CAD.preco,obs:CAD.obs})})
+  .then(function(r){return r.json()}).then(function(j){
+   if(j.error){box.innerHTML='⚠️ '+esc(j.error);return}
+   box.innerHTML='✅ <strong>'+esc(j.sku||CAD.sku)+'</strong> '+(j.novo?'cadastrado':'atualizado')+' na linha '+esc(j.linha||'?')+' da planilha.<br>Custo R$ '+esc(j.custo||'?')+' · Venda R$ '+esc(j.preco||'?')+' · Margem R$ '+esc(j.margem||'?')+(j.pct?' ('+esc(j.pct)+')':'')+'<br><span style="color:#64748b">A busca por SKU pode levar uns minutos pra enxergar (o Google guarda o CSV em cache).</span>';
+  }).catch(function(e){box.innerHTML='⚠️ Falha: '+esc(e)});
+ };
+};
 /* ---- medidas achadas no anuncio: NUNCA preenche sozinho, sempre pergunta ---- */
 var MED_SUG='';
 function normMed(x){return String(x==null?'':x).toLowerCase().replace(/×/g,'x').replace(/,/g,'.').replace(/\s+/g,'')}
