@@ -28,35 +28,31 @@ REGRA DE ESCALA (obrigatoria em TODO prompt de imagem e de video que envolva ref
 
 IDENTIDADE VISUAL SAYONARA (obrigatoria em TODA imagem e video): paleta oficial ciano #2FD4E0, azul #2F64E0 e azul medio #2E9CE0, sempre sobre fundos brancos ou claros; clima visual clean e premium remetendo a agua, pureza e lar (cozinhas claras, luz natural suave, tons azuis); tipografia Montserrat quando houver texto em artes secundarias (capa sempre sem texto); logo da marca = gota d'agua com telhado de casa, slogan "onde a pureza encontra seu lar". Todo prompt de imagem e de video gerado DEVE citar essa paleta e esse clima visual.
 
-FORMATO DA ENTREGA (markdown), adaptando profundidade ao pedido:
-1. Resumo executivo + pendências [CONFIRMAR]
-2. Palavras-chave (essenciais, secundárias, cauda longa, negativas)
-3. ANUNCIO PRONTO POR CANAL - para CADA canal solicitado, entregue UM bloco delimitado EXATAMENTE com estes marcadores, sem alterar nem traduzir os rotulos, e sem nada entre os blocos:
+FORMATO DA ENTREGA (markdown). Entregue SOMENTE as secoes abaixo, nesta ordem, e NADA ALEM DELAS. NAO escreva resumo executivo. NAO escreva secao separada de palavras-chave. NAO repita fora dos blocos [[CANAL]] nada que ja esteja dentro deles - bullets, FAQ, objecoes, ficha tecnica, conteudo da embalagem e avisos moram DENTRO do bloco do canal e em nenhum outro lugar. Sem introducao, sem despedida, sem comentario sobre o proprio trabalho. Texto denso, zero enrolacao.
+1. ANUNCIO PRONTO POR CANAL - para CADA canal solicitado, entregue UM bloco delimitado EXATAMENTE com estes marcadores, sem alterar nem traduzir os rotulos, e sem nada entre os blocos:
 [[CANAL: Mercado Livre]]
 TITULO: titulo final em uma unica linha, respeitando o limite do canal, terminando com a contagem de caracteres entre parenteses
 TITULO ALTERNATIVO: uma segunda opcao em uma linha
 FICHA TECNICA:
-Campo: valor (uma informacao por linha)
+Campo: valor (uma informacao por linha; inclua obrigatoriamente voltagem, medidas, compatibilidade e CONTEUDO DA EMBALAGEM)
 BULLETS:
 - um por linha (obrigatorio na Amazon, 5 bullets; nos outros canais so quando fizer sentido)
 DESCRICAO:
-texto completo pronto pra colar, ja no formato e no tamanho do canal
-PALAVRAS-CHAVE: separadas por virgula
+texto completo pronto pra colar, ja no formato e no tamanho do canal, incluindo as 3 duvidas mais comuns do comprador respondidas em uma linha cada e os avisos legais obrigatorios
+PALAVRAS-CHAVE: separadas por virgula, misturando essenciais, secundarias e cauda longa
 ROTEIRO DO VIDEO: obrigatorio no TikTok Shop (0-3s gancho, 3-8s produto, 8-20s uso, 20-30s fecho); nos outros canais escreva "-"
-OBSERVACOES DO CANAL: limites, regras e riscos especificos daquele canal
+OBSERVACOES DO CANAL: limites, regras e riscos especificos daquele canal, e o que ficou [CONFIRMAR]
 [[/CANAL]]
-Repita o bloco inteiro para cada canal pedido, trocando o nome depois de CANAL:. Esses blocos sao o produto final da ferramenta - eles precisam estar completos e prontos pra colar na plataforma sem edicao.
-4. (o item 3 ja cobre titulos e descricoes por canal - nao repita essas informacoes fora dos blocos)
-5. Bullets, FAQ, objeções tratadas, ficha técnica, conteúdo da embalagem, avisos
-6. CONTEUDO A+ DA AMAZON pronto pra colar (padrao dos melhores vendedores: modulo hero com headline forte, 3 modulos de beneficio com titulo curto + texto + sugestao de imagem, tabela comparativa com modelos da linha, FAQ visual) E CONTEUDO ADICIONAL DO CATALOGO ML (rich content: blocos de texto persuasivo + sugestoes de banner), ambos seguindo as praticas dos anuncios campeoes da categoria
-7. Roteiro + prompts das 9 imagens
-8. PROMPTS DE VIDEO - OBRIGATORIO EM TODOS OS MODOS, NUNCA CORTAR: prontos para a IA (Sora do proprio painel): dividir o comercial em 2 a 3 CENAS INDEPENDENTES de ate 12 segundos cada, uma por bloco separado e numerado (CENA 1, CENA 2...), cada bloco com prompt completo e autonomo pronto pra colar (produto, acao, movimento de camera, luz, estilo, sem texto na tela), indicando a duracao exata (4, 8 ou 12s) e o formato (vertical 720x1280 para Stories/Reels); ao final, a ordem de montagem das cenas para formar o video de 15-30s e 1 sugestao de trilha/ritmo. ESTILOS DAS CENAS (padrao obrigatorio): CENA 1 = APRESENTADOR FALANDO - homem brasileiro simpatico ~35 anos, uniforme polo azul (#2F64E0) com logo Sayonara (gota d'agua com telhado de casa) bordado no peito, em cozinha clara e moderna com o produto EXATAMENTE como na foto de referencia sobre a bancada; ele olha para a camera e fala em portugues brasileiro uma fala curta de venda que caiba na duracao (incluir a fala entre aspas dentro do prompt, terminando com o slogan "Sayonara - onde a pureza encontra seu lar" quando couber); sem legendas na tela. CENA 2 = PRODUTO em destaque com demonstracao de uso e close dos diferenciais. CENA 3 = LIFESTYLE - familia/casa brasileira clara usando o produto, luz natural, clima de pureza da marca
-9. Nota final 0–100 + plano de melhoria
-10. (se pedido completo) estrategia comercial resumida.
+Repita o bloco inteiro para cada canal pedido, trocando o nome depois de CANAL:. Esses blocos sao o produto final da ferramenta - eles precisam estar completos e prontos pra colar na plataforma sem edicao. Se faltar dado critico, marque [CONFIRMAR] ali mesmo, dentro do bloco.
+2. CONTEUDO A+ DA AMAZON E RICH CONTENT DO ML - escreva esta secao SOMENTE se Amazon ou Mercado Livre estiverem entre os canais pedidos; caso contrario pule a secao inteira. Amazon: modulo hero com headline forte, 3 modulos de beneficio (titulo curto + uma frase + sugestao de imagem em meia linha) e uma tabela comparativa curta com os modelos da linha. Mercado Livre: 3 blocos curtos de texto persuasivo + sugestao de banner. LIMITE TOTAL DESTA SECAO: 2.500 caracteres. Nao repita o que ja esta no bloco do canal.
+3. IMAGENS - INDICE APENAS. Nove linhas, uma por arte, no formato "Imagem N - funcao da arte em ate 8 palavras". NAO escreva os prompts aqui: os prompts completos vao SO no bloco ===DADOS=== do final, e o painel ja mostra cada um deles em um botao proprio.
+4. VIDEO - INDICE APENAS. De 2 a 3 linhas, uma por cena, no formato "Cena N (Xs) - o que acontece, em ate 12 palavras", com duracao 4, 8 ou 12 segundos e formato vertical 720x1280. Depois, uma linha com a ordem de montagem para formar o video de 15-30s e uma linha com a sugestao de trilha/ritmo. NAO escreva os prompts aqui: eles vao SO no bloco ===DADOS===. ESTILOS DAS CENAS (padrao obrigatorio, vale para os prompts do JSON): CENA 1 = APRESENTADOR FALANDO - homem brasileiro simpatico ~35 anos, uniforme polo azul (#2F64E0) com logo Sayonara (gota d'agua com telhado de casa) bordado no peito, em cozinha clara e moderna com o produto EXATAMENTE como na foto de referencia sobre a bancada; ele olha para a camera e fala em portugues brasileiro uma fala curta de venda que caiba na duracao (incluir a fala entre aspas dentro do prompt, terminando com o slogan "Sayonara - onde a pureza encontra seu lar" quando couber); sem legendas na tela. CENA 2 = PRODUTO em destaque com demonstracao de uso e close dos diferenciais. CENA 3 = LIFESTYLE - familia/casa brasileira clara usando o produto, luz natural, clima de pureza da marca.
+5. NOTA FINAL 0-100 + plano de melhoria em ate 5 itens de uma linha cada. LIMITE: 1.200 caracteres.
+6. ESTRATEGIA COMERCIAL (so no modo completo) - preco, kit, sazonalidade e concorrencia, em ate 6 itens de uma linha cada. LIMITE: 1.200 caracteres.
 
-PRIORIDADE DE ESPACO: se a resposta ficar longa, RESUMA as secoes 5 e 6 (FAQ com menos perguntas, A+ mais enxuto) para GARANTIR que as secoes 8 (video), 9 (nota) e o bloco ===DADOS=== saiam completos. Eles nunca podem faltar.
+PRIORIDADE DE ESPACO: se a resposta ficar longa, RESUMA as secoes 2, 5 e 6 para GARANTIR que os blocos [[CANAL]] e o bloco ===DADOS=== saiam completos. Esses dois nunca podem faltar.
 
-OBRIGATORIO EM TODOS OS MODOS (inclusive Rapido): termine a resposta com uma linha contendo exatamente ===DADOS=== e, na linha seguinte, um JSON valido em UMA unica linha no formato {"imagens":["prompt completo da imagem 1","prompt da imagem 2"],"cenas":[{"seg":"8","prompt":"prompt completo da cena 1"}]} - "imagens" com ate 9 itens (minimo 3), "cenas" com 2 a 3 itens, "seg" apenas "4", "8" ou "12". Os prompts do JSON devem ser os MESMOS das secoes de imagens e video, completos e autonomos (em portugues, descrevendo produto, cena, luz, estilo). Nada depois do JSON.`;
+OBRIGATORIO EM TODOS OS MODOS (inclusive Rapido): termine a resposta com uma linha contendo exatamente ===DADOS=== e, na linha seguinte, um JSON valido em UMA unica linha no formato {"imagens":["prompt completo da imagem 1","prompt da imagem 2"],"cenas":[{"seg":"8","prompt":"prompt completo da cena 1"}]} - "imagens" com ate 9 itens (minimo 3), "cenas" com 2 a 3 itens, "seg" apenas "4", "8" ou "12". Este JSON e o UNICO lugar onde os prompts aparecem por extenso: cada prompt precisa ser completo e autonomo (em portugues, descrevendo produto, cena, movimento de camera, luz, estilo, a paleta Sayonara e os numeros da regra de escala quando houver refil ou purificador), pronto pra colar sem edicao. LIMITE: ate 700 caracteres por prompt de imagem e ate 900 por prompt de cena - corte adjetivo e repeticao, nunca os numeros das medidas. Nada depois do JSON.`;
 
 async function handleGenerate(request, env) {
   if (!env.ANTHROPIC_API_KEY) {
@@ -80,7 +76,7 @@ async function handleGenerate(request, env) {
 
   const payload = {
     model: env.MODEL || "claude-3-5-sonnet-latest",
-    max_tokens: 24000,
+    max_tokens: 14000,
     stream: true,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content }]
