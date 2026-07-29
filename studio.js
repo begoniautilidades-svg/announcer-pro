@@ -155,7 +155,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 
  <div class="card" id="cfotos" style="display:none">
   <h2>4 · As 6 fotos — parada 1</h2>
-  <p>Uma foto por vez. Eu não sigo sozinho para a próxima: você olha, aprova ou manda refazer. Cada prompt abaixo pode ser editado antes de gerar — o texto que estiver na caixa é exatamente o que vai para a IA.</p>
+  <p>Uma foto por vez. Eu não sigo sozinho para a próxima: você olha, aprova ou manda refazer. Se a imagem sair errada, clique em <strong>Não concordo</strong> embaixo dela: eu olho a imagem e reescrevo o prompt. Cada prompt abaixo pode ser editado antes de gerar — o texto que estiver na caixa é exatamente o que vai para a IA.</p>
   <div class="field" style="max-width:280px">
    <label>Qualidade da imagem</label>
    <select id="fQual">
@@ -166,6 +166,43 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
   </div>
   <div id="seis"></div>
   <div class="aviso" style="margin-top:6px"><strong>Lembrete das regras.</strong> A foto 1 é a capa: sem logo, sem selo, sem faixa — Mercado Livre e Amazon derrubam o anúncio. A foto 4 não tem rosto, só mãos, porque a API de vídeo recusa referência com rosto. Nenhuma foto leva marca de fabricante ou de fornecedor. E nenhuma foto escreve medida: número escrito por IA sai errado — a medida escrita vem do quadro aqui embaixo, que é desenho, não IA.</div>
+ </div>
+
+ <div class="card" id="cajuste">
+  <h2>Não concordo com a imagem — o que ajustar</h2>
+  <p>Quando a imagem sair errada, é aqui que a gente conserta. Você me diz o que não gostou, sobe a imagem que saiu, e eu <strong>olho a imagem de verdade</strong>: conto as peças, confiro a proporção entre os tamanhos, procuro logo de fornecedor, texto inventado, item a mais ou a menos, mão com dedo errado. Devolvo o que está errado em português claro e o <strong>prompt perfeito já reescrito</strong>, pronto para gerar de novo.</p>
+  <p style="font-size:.86rem">Analisar <strong>não gera imagem nenhuma</strong> — é só texto, custa alguns centavos. A cobrança da imagem só volta quando você clicar em gerar, e eu paro e pergunto o preço antes.</p>
+  <div class="g2">
+   <div class="field">
+    <label>Qual imagem é essa</label>
+    <select id="aQual">
+     <option value="1">Foto 1 — CAPA</option>
+     <option value="2">Foto 2 — DETALHE REAL</option>
+     <option value="3">Foto 3 — DIFERENCIAL</option>
+     <option value="4">Foto 4 — USO REAL</option>
+     <option value="5">Foto 5 — TAMANHO REAL</option>
+     <option value="6">Foto 6 — O QUE VEM NA CAIXA</option>
+     <option value="0">Outra imagem — não é uma das 6</option>
+    </select>
+   </div>
+   <div class="field">
+    <label>Subir a imagem que foi criada</label>
+    <input type="file" id="aFile" accept="image/*">
+   </div>
+  </div>
+  <div class="tira" id="aThumb"></div>
+  <div class="aviso" id="aFonte">Ainda não tenho imagem para olhar. Suba o arquivo acima — ou gere uma das 6 fotos aqui em cima e clique em <strong>Não concordo</strong>, que eu pego a imagem sozinho.</div>
+  <div class="field" style="margin-top:12px">
+   <label>O que eu não gostei / o que quero que mude</label>
+   <textarea id="aQueixa" style="min-height:90px" placeholder="Escreva do seu jeito. Ex.: vieram só 12 potes e tinham que ser 15 · todos saíram do mesmo tamanho · apareceu o nome do fabricante na tampa · o fundo saiu cinza em vez de branco · a etiqueta veio escrita e tinha que vir em branco"></textarea>
+  </div>
+  <div class="field">
+   <label>Prompt que gerou essa imagem</label>
+   <textarea id="aPrompt" style="min-height:110px" placeholder="Escolha a foto ali em cima que eu preencho sozinho — ou cole aqui o prompt que você usou."></textarea>
+  </div>
+  <button class="btn btn-p" id="aGo">Analisar a imagem e montar o prompt perfeito</button>
+  <div id="aMsg"></div>
+  <div id="aOut"></div>
  </div>
 
  <div class="card">
@@ -498,7 +535,9 @@ function gerar(i,btn){
    +'<div class="g2" style="margin-top:10px">'
    +'<button class="btn btn-g" id="dl'+i+'">Baixar em 1200 x 1200</button>'
    +'<button class="btn btn-p" id="ok'+i+'">Está boa, aprovar</button></div>'
+   +'<button class="btn btn-g" id="nc'+i+'" style="margin-top:8px;width:100%">Não concordo — quero ajustar esta foto</button>'
    +'<div id="ap'+i+'"></div>';
+  q('nc'+i).onclick=function(){levarParaAjuste(i)};
   if(temMed)q('md5').onclick=function(){
    var b=this;b.disabled=true;b.textContent='Escrevendo...';
    medidasSobre(u,Fa.pecas,function(url){
@@ -534,6 +573,139 @@ function baixar(i,u){
  };
  im.src=u;
 }
+
+/* ====== "não concordo com a imagem": eu olho a imagem e reescrevo o prompt ======
+   A análise nunca gera imagem. Ela devolve o diagnóstico e o prompt novo;
+   quem manda gerar de novo é ela, no botão da foto, com o custo na tela. */
+var AJIMG=null;
+
+function reduzir(file,cb){
+ var fr=new FileReader();
+ fr.onload=function(){
+  var im=new Image();
+  im.onload=function(){
+   var m=1024,w=im.width,h=im.height;
+   if(w>m||h>m){if(w>h){h=Math.round(h*m/w);w=m}else{w=Math.round(w*m/h);h=m}}
+   var c=document.createElement('canvas');c.width=w;c.height=h;
+   c.getContext('2d').drawImage(im,0,0,w,h);
+   cb(c.toDataURL('image/png'));
+  };
+  im.src=fr.result;
+ };
+ fr.readAsDataURL(file);
+}
+
+q('aFile').onchange=function(){
+ var f=(this.files||[])[0];
+ if(!f){AJIMG=null;q('aThumb').innerHTML='';fonteAjuste();return}
+ reduzir(f,function(u){
+  AJIMG={data:u.split(',')[1],media:'image/png'};
+  q('aThumb').innerHTML='';
+  var t=document.createElement('img');t.className='thumb';t.src=u;q('aThumb').appendChild(t);
+  fonteAjuste();
+ });
+};
+
+function imgDaPagina(){
+ var n=q('aQual').value;
+ if(n==='0')return null;
+ var e=document.getElementById('ii'+n);
+ if(!e||!e.src||e.src.indexOf('data:image')!==0)return null;
+ return {data:e.src.split(',')[1],media:'image/png'};
+}
+
+function fonteAjuste(){
+ var n=q('aQual').value,t;
+ if(AJIMG)t='Vou analisar <strong>a imagem que você subiu</strong>.';
+ else if(imgDaPagina())t='Vou analisar <strong>a foto '+n+' que acabou de sair aqui na página</strong>. Se quiser que eu olhe outra, suba o arquivo acima.';
+ else t='Ainda não tenho imagem para olhar. Suba o arquivo acima — sem imagem eu só consigo trabalhar pelo que você escrever.';
+ q('aFonte').innerHTML=t;
+}
+
+function promptDaFoto(n){
+ var p=document.getElementById('pp'+n);
+ if(!p)return;
+ var cur=(q('aPrompt').value||'').trim(),deOutra=false;
+ for(var k=1;k<=6;k++){var o=document.getElementById('pp'+k);if(o&&o.value.trim()===cur)deOutra=true}
+ if(!cur||deOutra)q('aPrompt').value=p.value;
+}
+
+q('aQual').onchange=function(){promptDaFoto(this.value);fonteAjuste()};
+
+function levarParaAjuste(i){
+ q('aQual').value=String(i);
+ var p=document.getElementById('pp'+i);
+ if(p)q('aPrompt').value=p.value;
+ AJIMG=null;q('aFile').value='';q('aThumb').innerHTML='';
+ q('aMsg').innerHTML='';q('aOut').innerHTML='';
+ fonteAjuste();
+ q('cajuste').scrollIntoView({behavior:'smooth',block:'start'});
+ try{q('aQueixa').focus()}catch(e){}
+}
+
+function fichaTxt(){
+ var F=fichaAtual(),t='Produto: '+F.nome+'\n';
+ if(F.sku)t+='SKU: '+F.sku+'\n';
+ if(F.marca)t+='Marca que vai no anuncio: '+F.marca+'\n';
+ if(F.cat)t+='Categoria: '+F.cat+'\n';
+ if(F.dif)t+='Diferencial: '+F.dif+'\n';
+ if(F.caixa)t+='O que vem na caixa: '+F.caixa+'\n';
+ if(F.kit&&F.pecas.length){
+  t+='E um kit com '+totalPecas(F.pecas)+' pecas no total, em '+F.pecas.length+' tamanhos: '+gruposTxt(F.pecas)+'.\n';
+  t+='Alturas reais: '+tamanhosTxt(F.pecas)+'.\n';
+ }
+ return t;
+}
+
+q('aGo').onclick=function(){
+ var btn=this,msg=q('aMsg');
+ var pr=(q('aPrompt').value||'').trim();
+ var qx=(q('aQueixa').value||'').trim();
+ var im=AJIMG||imgDaPagina();
+ if(!pr){msg.innerHTML='<div class="erro">Falta o prompt que gerou essa imagem. Escolha a foto ali em cima que eu preencho, ou cole o prompt na caixa.</div>';return}
+ if(!qx&&!im){msg.innerHTML='<div class="erro">Escreva o que você quer mudar, ou suba a imagem para eu analisar. Com uma das duas coisas eu já trabalho.</div>';return}
+ btn.disabled=true;btn.textContent='Analisando...';
+ q('aOut').innerHTML='';
+ msg.innerHTML='<div class="spin">Olhando a imagem e reescrevendo o prompt... leva de 10 a 40 segundos.</div>';
+ fetch('/api/analisar',{method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({prompt:pr,queixa:qx,ficha:fichaTxt(),imagem:im})})
+ .then(function(r){return r.json()})
+ .then(function(j){
+  btn.disabled=false;btn.textContent='Analisar de novo';
+  if(j.error){msg.innerHTML='<div class="erro">'+esc(j.error)+'</div>';return}
+  if(!j.prompt){msg.innerHTML='<div class="erro">Veio uma resposta sem o prompt novo. Tente de novo.</div>';return}
+  msg.innerHTML='';
+  var n=q('aQual').value,h='';
+  if(j.diagnostico)h+='<div class="aviso" style="margin-top:12px"><strong>O que eu vi nessa imagem:</strong><br>'+esc(j.diagnostico).replace(/\n/g,'<br>')+'</div>';
+  h+='<div class="field" style="margin-top:12px"><label>Prompt perfeito do ajuste — já corrigido</label><textarea id="aNovo" style="min-height:190px"></textarea></div>';
+  h+='<div class="g2">';
+  if(n!=='0')h+='<button class="btn btn-p" id="aUsar">Trocar o prompt da foto '+n+' por este</button>';
+  h+='<button class="btn btn-g" id="aCopy">Copiar o prompt</button></div>';
+  h+='<div class="custo">Nada foi gerado ainda e nada foi cobrado. Leia o prompt, mude o que quiser, e só depois clique em gerar lá em cima — eu pergunto o preço antes.</div>';
+  q('aOut').innerHTML=h;
+  q('aNovo').value=j.prompt;
+  if(n!=='0')q('aUsar').onclick=function(){
+   var p=document.getElementById('pp'+n);
+   if(!p){msg.innerHTML='<div class="erro">A foto '+n+' ainda não está montada. Clique em \u201cMontar os 6 prompts\u201d na ficha e tente de novo.</div>';return}
+   p.value=q('aNovo').value;
+   this.disabled=true;this.textContent='Prompt trocado na foto '+n;
+   var cx=document.getElementById('fb'+n);
+   if(cx){cx.classList.remove('aprovada');cx.scrollIntoView({behavior:'smooth',block:'start'})}
+  };
+  q('aCopy').onclick=function(){
+   var b=this,t=q('aNovo');
+   t.focus();t.select();
+   try{t.setSelectionRange(0,999999)}catch(e){}
+   try{document.execCommand('copy');b.textContent='Copiado!'}catch(e){b.textContent='Selecione e copie'}
+   setTimeout(function(){b.textContent='Copiar o prompt'},1800);
+  };
+  q('aOut').scrollIntoView({behavior:'smooth',block:'nearest'});
+ })
+ .catch(function(e){
+  btn.disabled=false;btn.textContent='Analisar a imagem e montar o prompt perfeito';
+  msg.innerHTML='<div class="erro">Não consegui falar com a análise. '+esc(String(e&&e.message||e))+'</div>';
+ });
+};
 
 /* ============ ETAPA 3 — o que eu DESENHO, e não a IA ============
    Medida escrita nunca passa pelo gerador de imagem. Aqui embaixo o
