@@ -234,6 +234,64 @@ async function handleFix(request, env) {
   return json({ prompt: novo });
 }
 
+async function handleAnalisar(request, env) {
+  if (!env.ANTHROPIC_API_KEY) return json({ error: "Falta configurar ANTHROPIC_API_KEY." }, 500);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "JSON invalido." }, 400); }
+  const promptOrig = String(body.prompt || "").slice(0, 7000);
+  const queixa = String(body.queixa || "").slice(0, 2000);
+  const ficha = String(body.ficha || "").slice(0, 3000);
+  const img = (body.imagem && body.imagem.data) ? body.imagem : null;
+  if (!promptOrig) return json({ error: "Faltou o prompt que gerou a imagem." }, 400);
+  if (!queixa && !img) return json({ error: "Escreva o que voce quer mudar, ou suba a imagem para eu analisar." }, 400);
+
+  const sys = "Voce e diretor de arte de e-commerce brasileiro e revisor de prompts de geracao de imagem por IA. "
+    + "Voce recebe a ficha real do produto, o prompt que gerou a imagem, o que a lojista nao gostou e, quando houver, a propria imagem gerada. "
+    + "PARTE 1, diagnostico: olhe a imagem e escreva em portugues simples, em ate 6 itens curtos, o que esta errado de verdade nela em relacao a ficha e ao prompt. "
+    + "Confira sempre, quando fizer sentido: contagem de pecas, proporcao de tamanho entre as pecas, cor, formato, rotulo, texto ou numero inventado, logotipo ou selo de terceiro, item a mais ou a menos, corte na borda, sombra, fundo, maos e dedos. "
+    + "Se a lojista reclamou de alguma coisa, esse ponto entra sempre em primeiro lugar. Nao invente defeito que voce nao consegue ver na imagem. Se a imagem estiver correta, diga isso com todas as letras. "
+    + "PARTE 2, prompt: reescreva o prompt INTEIRO corrigindo esses pontos e mantendo tudo que nao precisa mudar, em portugues, sem markdown e sem comentario. "
+    + "Transforme cada defeito em instrucao positiva e explicita do que deve aparecer, com numero exato quando houver numero, e repita no fim as proibicoes que foram desrespeitadas. "
+    + "Responda EXATAMENTE neste formato, sem nenhuma outra palavra antes ou depois:\n===DIAGNOSTICO===\n- primeiro item\n- segundo item\n===PROMPT===\ntexto completo do prompt reescrito";
+
+  const partes = [];
+  if (img) {
+    const mt = ["image/png", "image/jpeg", "image/webp", "image/gif"].indexOf(String(img.media)) >= 0 ? String(img.media) : "image/png";
+    partes.push({ type: "image", source: { type: "base64", media_type: mt, data: String(img.data) } });
+  }
+  let txtIn = "";
+  if (ficha) txtIn += "FICHA REAL DO PRODUTO:\n" + ficha + "\n\n";
+  txtIn += "PROMPT QUE GEROU A IMAGEM:\n" + promptOrig + "\n\n";
+  txtIn += "O QUE A LOJISTA NAO GOSTOU:\n" + (queixa || "(ela nao escreveu nada; olhe a imagem e aponte o que estiver errado em relacao a ficha e ao prompt)") + "\n\n";
+  txtIn += img ? "A imagem gerada esta anexada acima. Analise ela de verdade." : "Nao ha imagem anexada: baseie o diagnostico so no que a lojista escreveu.";
+  partes.push({ type: "text", text: txtIn });
+
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({
+      model: env.MODEL || "claude-3-5-sonnet-latest",
+      max_tokens: 2500,
+      system: sys,
+      messages: [{ role: "user", content: partes }]
+    })
+  });
+  if (!r.ok) { const t = await r.text(); return json({ error: "Erro da API do Claude (" + r.status + "): " + t.slice(0, 300) }, 502); }
+  const data = await r.json();
+  const txt = (((data.content || [])[0] || {}).text || "").trim();
+  if (!txt) return json({ error: "Resposta vazia." }, 502);
+  let diag = "", novo = "";
+  const partido = txt.split("===PROMPT===");
+  if (partido.length >= 2) {
+    diag = partido[0].replace("===DIAGNOSTICO===", "").trim();
+    novo = partido.slice(1).join("===PROMPT===").trim();
+  } else {
+    novo = txt.replace("===DIAGNOSTICO===", "").trim();
+  }
+  if (!novo) return json({ error: "Nao consegui montar o prompt novo. Tente de novo." }, 502);
+  return json({ diagnostico: diag, prompt: novo });
+}
+
 async function handleVideo(request, env) {
   if (!env.OPENAI_API_KEY) {
     return json({ error: "Falta configurar OPENAI_API_KEY no Cloudflare (Settings > Variables and Secrets)." }, 500);
@@ -463,6 +521,9 @@ export default {
     if (url.pathname === "/api/fix" && request.method === "POST") {
       return handleFix(request, env);
     }
+    if (url.pathname === "/api/analisar" && request.method === "POST") {
+      return handleAnalisar(request, env);
+    }
     if (url.pathname === "/api/sku" && request.method === "GET") {
       return handleSku(request);
     }
@@ -514,51 +575,51 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 .req{color:var(--warn)}
 </style></head><body>
 <header><div class="w"><h1>🚀 ANNOUNCER PRO — Criação de Anúncios</h1>
-<p>Passo a passo: preencha à esquerda → 1 Gerar anúncio → 2 Imagens → 3 Vídeo. Marca oficial: Sayonara.</p></div></header>
+<p>Preencha à esquerda → <strong>Gerar anúncio</strong> → <strong>Enviar para o STUDIO</strong> (é lá que saem as imagens e os vídeos). Marca oficial: Sayonara.</p></div></header>
 <div class="container">
 <div>
- <div class="card"><h2>1 · O que vamos fazer?</h2>
-  <div class="chips" id="modo"><div class="chip on" data-v="Criar anúncio novo">Criar novo</div><div class="chip" data-v="Otimizar existente">Otimizar</div><div class="chip" data-v="Replicar em outra cor/variação">Replicar cor</div><div class="chip" data-v="Adaptar para outro canal">Adaptar canal</div></div></div>
- <div class="card"><h2>1.5 · Buscar da minha planilha</h2>
-  <p class="hint">Digite o SKU e eu puxo nome, marca, custo, preço e margem direto do seu PAINEL no Drive.</p>
+ <div class="card"><h2>1 · Produto <span class="req">*</span></h2>
+  <p class="hint">Comece pelo <strong>SKU</strong>: eu puxo nome, marca, custo, preço e margem direto do seu PAINEL no Drive. O SKU também vira o nome da pasta no Drive e do arquivo baixado.</p>
   <div class="g2"><div class="field"><label>SKU</label><input id="sku" placeholder="FER-0053"></div><div class="field"><label>&nbsp;</label><button id="bsku" class="btn btn-p" style="width:100%">🔎 Buscar na planilha</button></div></div>
   <div id="skuout" style="display:none;font-size:.85rem;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:8px;margin-top:8px"></div>
-  <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.85rem;color:var(--accent-d);font-weight:700">➕ Cadastrar este produto na planilha</summary>
-   <p class="hint" style="margin-top:8px">Uso o <strong>SKU</strong> daqui de cima e o <strong>Nome</strong> e a <strong>Marca</strong> do bloco 3. Preencha custo e preço aqui. Eu mostro a linha inteira antes e só gravo depois que você clicar em confirmar.</p>
+  <div class="g2" style="margin-top:12px"><div class="field"><label>Nome <span class="req">*</span></label><input id="nome" placeholder="Panela de Pressão 4,2L"></div><div class="field"><label>Marca</label><input id="marca" value="Sayonara"></div></div>
+  <div class="field"><label>Medidas</label><input id="med" placeholder="43 x 33 x 35 cm"><p class="hint" style="margin:6px 0 0">Vai junto para o STUDIO e enche o Contrato de medidas sozinho.</p></div>
+  <div id="medask" style="display:none;margin-top:10px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;padding:10px;font-size:.85rem;line-height:1.5"></div>
+  <div class="sw" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><label class="switch"><input type="checkbox" id="ct"><span class="sl"></span></label><span style="font-size:.85rem"><strong>É refil / compatível</strong> com outra marca</span></div>
+  <p class="hint" style="margin:6px 0 0">Liga a Regra de Ouro (protege de bloqueio).</p>
+  <div class="compat" id="cb"><div class="g2"><div class="field"><label>Marca REAL do produto</label><input id="marcaReal" placeholder="Hidro Filtros"></div><div class="field"><label>Compatível com (original)</label><input id="marcaOrig" placeholder="IBBL FR600"></div></div></div>
+  <details style="margin-top:12px"><summary style="cursor:pointer;font-size:.85rem;color:var(--accent-d);font-weight:700">➕ Cadastrar este produto na planilha</summary>
+   <p class="hint" style="margin-top:8px">Uso o <strong>SKU</strong>, o <strong>Nome</strong> e a <strong>Marca</strong> daqui de cima. Preencha custo e preço. Eu mostro a linha inteira antes e só gravo depois que você clicar em confirmar.</p>
    <div class="g2"><div class="field"><label>Custo (R$)</label><input id="custoin" placeholder="18,00"></div><div class="field"><label>Preço de venda (R$)</label><input id="precoin" placeholder="38,97"></div></div>
    <div class="field"><label>Observações (opcional)</label><input id="obsin" placeholder="ex.: caixa com 3 unidades"></div>
    <button id="bcad" class="btn btn-g" style="margin-top:8px">💾 Salvar na planilha</button>
    <div id="cadout" style="display:none;font-size:.85rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px;margin-top:8px"></div></details>
-  <details style="margin-top:10px"><summary style="cursor:pointer;font-size:.85rem;color:var(--muted)">⚙️ Configurar o link da planilha (só uma vez)</summary>
+  <details style="margin-top:8px"><summary style="cursor:pointer;font-size:.85rem;color:var(--muted)">⚙️ Configurar o link da planilha (só uma vez)</summary>
    <p class="hint" style="margin-top:8px">Na sua planilha PAINEL: <strong>Arquivo → Compartilhar → Publicar na web → escolha CSV → Publicar</strong>. Copie o link que aparecer e cole aqui.</p>
    <div class="field"><input id="csvurl" placeholder="https://docs.google.com/spreadsheets/d/e/..../pub?output=csv"></div>
    <button id="bcsv" class="btn btn-g" style="margin-top:6px">Salvar link</button></details></div>
- <div class="card"><h2>2 · Fotos reais do produto <span class="req">*</span></h2><p class="hint">Até 4 fotos (ângulos diferentes ajudam). Elas garantem que as imagens geradas fiquem idênticas ao seu produto.</p>
+ <div class="card"><h2>2 · Fotos reais do produto <span class="req">*</span></h2><p class="hint">Até 4 fotos (ângulos diferentes ajudam). Elas vão junto para o STUDIO e garantem que as imagens geradas fiquem idênticas ao seu produto.</p>
   <label class="imgbtn" for="img">📷 <strong>Importar fotos (até 4)</strong></label><input id="img" type="file" accept="image/*" multiple hidden><div class="thumbs" id="thumbs"></div></div>
- <div class="card"><h2>3 · Informações do produto</h2>
-  <div class="g3"><div class="field"><label>SKU</label><input id="sku2" placeholder="FER-0053"></div><div class="field"><label>Nome <span class="req">*</span></label><input id="nome" placeholder="Panela de Pressão 4,2L"></div><div class="field"><label>Marca</label><input id="marca" value="Sayonara"></div></div>
-  <p class="hint" style="margin:-4px 0 10px">O SKU é o nome da pasta no Drive e do arquivo baixado. É o mesmo campo do bloco 1 — preencher em um preenche o outro.</p>
-  <div class="field"><label>Medidas</label><input id="med" placeholder="43 x 33 x 35 cm"><p class="hint" style="margin:6px 0 0">Vai junto para o STUDIO e enche o Contrato de medidas sozinho.</p></div><div id="medask" style="display:none;margin-top:10px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;padding:10px;font-size:.85rem;line-height:1.5"></div></div>
- <div class="card"><h2>4 · É refil/compatível?</h2><p class="hint">Liga a Regra de Ouro (protege de bloqueio).</p>
-  <div class="sw"><label class="switch"><input type="checkbox" id="ct"><span class="sl"></span></label><span style="font-size:.85rem">Sim, é compatível</span></div>
-  <div class="compat" id="cb"><div class="g2"><div class="field"><label>Marca REAL do produto</label><input id="marcaReal" placeholder="Hidro Filtros"></div><div class="field"><label>Compatível com (original)</label><input id="marcaOrig" placeholder="IBBL FR600"></div></div></div></div>
- <div class="card"><h2>5 · Tudo sobre o produto</h2><p class="hint"><strong>É aqui que vai o resto.</strong> Escreva do jeito que você falaria — voltagem, capacidade, cor, material, garantia, EAN, INMETRO, diferenciais, para quem serve. Eu leio e organizo sozinha.</p><textarea id="desc" rows="7" placeholder="Exemplo:&#10;Bivolt. Capacidade 4,2 litros.&#10;Sem PFOA, fundo triplo, 3 sistemas de segurança.&#10;Cor preta. Garantia de 1 ano. Certificado INMETRO.&#10;EAN 7898000000000.&#10;Serve para quem cozinha para uma família de 4 pessoas."></textarea>
+ <div class="card"><h2>3 · Tudo sobre o produto</h2><p class="hint"><strong>É aqui que vai o resto.</strong> Escreva do jeito que você falaria — voltagem, capacidade, cor, material, garantia, EAN, INMETRO, diferenciais, para quem serve. Eu leio e organizo sozinha.</p><textarea id="desc" rows="7" placeholder="Exemplo:&#10;Bivolt. Capacidade 4,2 litros.&#10;Sem PFOA, fundo triplo, 3 sistemas de segurança.&#10;Cor preta. Garantia de 1 ano. Certificado INMETRO.&#10;EAN 7898000000000.&#10;Serve para quem cozinha para uma família de 4 pessoas."></textarea>
   <p class="hint" style="margin:8px 0 0">Quanto mais você escrever aqui, melhor sai o anúncio. Pode escrever tudo junto ou uma coisa por linha — tanto faz.</p>
   <div class="g2" style="margin-top:10px"><div class="field"><label>Meu anúncio atual (p/ otimizar)</label><input id="linkMeu" placeholder="https://..."></div><div class="field"><label>Produto similar (base)</label><input id="linkSim" placeholder="https://..."></div></div></div>
- <div class="card"><h2>6 · Canais e profundidade</h2>
+ <div class="card"><h2>4 · Canais e tipo de trabalho</h2>
   <label>Canais</label><div class="chips" id="canais" style="margin-bottom:12px"><div class="chip on" data-v="Mercado Livre">Mercado Livre</div><div class="chip" data-v="Shopee">Shopee</div><div class="chip on" data-v="Amazon">Amazon</div><div class="chip" data-v="Magalu">Magalu</div><div class="chip" data-v="TikTok Shop">TikTok Shop</div><div class="chip" data-v="Google Shopping">Google Shopping</div></div>
-  <label>Profundidade</label><div class="chips" id="prof"><div class="chip on" data-v="Pacote completo">Completo</div><div class="chip" data-v="Rápido">Rápido</div></div></div>
+  <label>Profundidade</label><div class="chips" id="prof" style="margin-bottom:12px"><div class="chip on" data-v="Pacote completo">Completo</div><div class="chip" data-v="Rápido">Rápido</div></div>
+  <label>O que vamos fazer</label><div class="chips" id="modo"><div class="chip on" data-v="Criar anúncio novo">Criar novo</div><div class="chip" data-v="Otimizar existente">Otimizar</div><div class="chip" data-v="Replicar em outra cor/variação">Replicar cor</div><div class="chip" data-v="Adaptar para outro canal">Adaptar canal</div></div></div>
 </div>
 <div class="side">
- <div class="card"><h2>✨ 1 · Gerar anúncio</h2><p class="hint">Preencha à esquerda e clique. O texto sai aqui e os prompts entram sozinhos nos passos 2 e 3. O último anúncio fica salvo neste navegador — ao reabrir o site, os prompts voltam sozinhos.</p>
+ <div class="card"><h2>✨ Gerar anúncio</h2><p class="hint">Preencha à esquerda e clique. O texto sai aqui e os prompts de imagem e as cenas de vídeo ficam guardados para o STUDIO. O último anúncio fica salvo neste navegador — ao reabrir o site, ele volta sozinho.</p>
   <button class="btn btn-p" id="go">🚀 Gerar anúncio</button>
   <div class="spin" id="spin">⏳ Criando o anúncio completo… pode levar 2 a 5 min. Não feche a página.</div><p class="hint" id="spinfim" style="display:none;margin:6px 0 0"></p>
   <div id="out" style="display:none"></div>
   <button class="btn btn-g" id="copy" style="display:none">📎 Copiar tudo</button></div>
  <div class="card" id="studiocard" style="border-color:#F6ABBB;background:#FDEEF1">
   <h2 style="color:#9E1E3A">🌸 Levar para o STUDIO DONA BEGÔ</h2>
-  <p class="hint">O texto do anúncio fica aqui. As imagens e o vídeo passam a ser feitos no STUDIO, com as suas fotos reais, as medidas reais e uma parada para você aprovar antes de cada passo que custa dinheiro.</p>
+  <p class="hint"><strong>As imagens e os vídeos são feitos no STUDIO</strong> — com as suas fotos reais, as medidas reais e uma parada para você aprovar antes de cada passo que custa dinheiro. Aqui no ANNOUNCER PRO fica só o texto do anúncio.</p>
+  <div id="stresumo" style="display:none;font-size:.82rem;background:#fff;border:1px solid #F6ABBB;border-radius:8px;padding:8px;margin-bottom:8px;line-height:1.5"></div>
   <button class="btn" id="gostudio" style="background:#E92C56;color:#fff">Enviar para o STUDIO →</button>
+  <a class="btn btn-g" href="/studio" target="_blank" style="text-decoration:none;text-align:center;display:block">Abrir o STUDIO sem enviar nada</a>
   <div id="stmsg" style="display:none;font-size:.85rem;margin-top:8px;color:#9E1E3A"></div></div>
  <div class="card" id="canalcard" style="display:none"><h2>📋 Pronto para publicar (por canal)</h2>
   <p class="hint">Clique no canal, copie campo por campo e cole direto na plataforma.</p>
@@ -571,43 +632,11 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
    <p class="hint" style="margin-top:8px">Cole aqui o link do script de arquivamento. O passo a passo está no documento <strong>COMO LIGAR O APP AO DRIVE</strong>, na sua pasta ANÚNCIOS SAYONARA.</p>
    <div class="field"><input id="gsurl" placeholder="https://script.google.com/macros/s/..../exec"></div>
    <button class="btn btn-g" id="bgs" style="margin-top:6px">Salvar link</button></details></div>
- <div class="card"><h2>🎨 2 · Gerar imagem <span style="font-size:.68rem;font-weight:600;color:#64748b">— vai mudar para o STUDIO</span></h2><p class="hint">Clique numa imagem abaixo (o prompt entra sozinho), deixe ele PRO, escolha a qualidade e gere. As fotos do passo 2 são copiadas fielmente — o produto sai idêntico ao seu.</p>
-  <div class="chips" id="ichips" style="margin-bottom:8px"></div>
-  <textarea id="iprompt" placeholder="Gere o anúncio no passo 1 — os prompts aparecem aqui. Ou cole um prompt seu."></textarea>
-  <button class="btn btn-g" id="gopro" style="margin-top:8px">✨ Deixar o prompt PRO (estúdio profissional)</button>
-  <label style="margin-top:10px">Qualidade da imagem</label>
-  <div class="chips" id="iq" style="margin-bottom:8px"><div class="chip" data-v="low">💨 Rascunho ~R$0,05</div><div class="chip on" data-v="medium">✅ Boa ~R$0,20</div><div class="chip" data-v="high">💎 Máxima ~R$0,75</div></div>
-  <button class="btn btn-p" id="goimg" style="margin-top:8px">🎨 Gerar imagem</button>
-  <div class="spin" id="ispin">⏳ Gerando imagem… pode levar ~1 min.</div>
-  <div id="iout" style="display:none;margin-top:10px"><img id="iimg" style="max-width:100%;border-radius:10px;border:1px solid var(--line)"><a id="idl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="imagem-anuncio.png">⬇️ Baixar imagem</a>
-   <label style="margin-top:10px">🔧 Não ficou boa? Diga o que mudar:</label><textarea id="ifix" style="min-height:48px" placeholder="Ex.: fundo mais claro, tira o texto, produto maior..."></textarea>
-   <button class="btn btn-g" id="goifix">🔧 Corrigir e gerar de novo</button></div></div>
- <div class="card"><h2>🎬 3 · Gerar vídeo (Sora) <span style="font-size:.68rem;font-weight:600;color:#64748b">— vai mudar para o STUDIO</span></h2><p class="hint">Clique numa cena (o prompt entra sozinho), escolha o estilo, suba as fotos reais (uma de cada produto), veja a prévia barata, corrija o que estiver errado e só então gere o vídeo. (4s ~R$2 · 12s ~R$6)</p>
-  <div class="chips" id="vchips" style="margin-bottom:8px"></div>
-  <label>Estilo do vídeo</label><div class="chips" id="vstyle" style="margin-bottom:8px"><div class="chip on" data-v="produto">📦 Produto</div><div class="chip" data-v="apresentador">🧑‍💼 Apresentador falando</div><div class="chip" data-v="lifestyle">🏠 Lifestyle</div></div>
-  <label class="imgbtn" for="vimgIn" style="padding:10px;margin-bottom:8px;display:block">📷 <strong>Fotos reais</strong> (até 4 — ex.: 1 do purificador + 1 do refil)</label><input id="vimgIn" type="file" accept="image/*" multiple hidden><div class="thumbs" id="vthumbs" style="margin:0 0 8px"></div>
-  <textarea id="vprompt" placeholder="Gere o anúncio no passo 1 — as cenas aparecem aqui."></textarea>
-  <div class="g2" style="margin-top:8px"><div class="field"><label>Duração</label><select id="vsec"><option value="4">4 segundos</option><option value="8">8 segundos</option><option value="12">12 segundos (max. da IA)</option></select></div><div class="field"><label>Formato</label><select id="vsize"><option value="720x1280">Vertical (Stories/Reels)</option><option value="1280x720">Horizontal</option></select></div></div>
-  <button class="btn btn-g" id="goprev" style="margin-top:0">👁️ Prévia da cena (imagem ~R$0,25)</button>
-  <div class="spin" id="pspin">⏳ Gerando prévia…</div>
-  <div id="pout" style="display:none;margin-top:8px;text-align:center"><img id="pimg" style="max-width:70%;border-radius:10px;border:1px solid var(--line)">
-   <label style="margin-top:10px;text-align:left">🔧 Não ficou boa? Diga o que mudar (eu viro prompt):</label><textarea id="pfix" style="min-height:56px" placeholder="Ex.: o refil ficou maior que o purificador. O refil é um cartucho pequeno, cabe na mão; o purificador é bem maior. Tira o texto errado do produto."></textarea>
-   <button class="btn btn-g" id="gopfix">🔧 Corrigir e gerar prévia de novo</button>
-   <label class="imgbtn" for="vimgIn" style="padding:8px;margin-top:8px;display:block">➕ Mandar mais uma foto real (ajuda a acertar tamanho e detalhes)</label></div>
-  <button class="btn btn-p" id="govid" style="margin-top:8px">🎬 Gerar vídeo</button>
-  <div class="spin" id="vspin">⏳ Gerando vídeo… pode levar até 5 min. Não feche a página.</div>
-  <div id="vout" style="display:none;margin-top:10px"><video id="vvid" controls style="max-width:100%;border-radius:10px;border:1px solid var(--line)"></video><a id="vdl" class="btn btn-g" style="text-decoration:none;display:block;text-align:center" download="video-anuncio.mp4">⬇️ Baixar vídeo</a>
-   <label style="margin-top:10px">🔧 Não ficou bom? Diga o que mudar:</label><textarea id="vfix" style="min-height:48px" placeholder="Ex.: câmera mais lenta, cozinha mais clara..."></textarea>
-   <button class="btn btn-g" id="govfix">🔧 Corrigir prompt da cena</button></div></div>
 </div>
 <script>
 var imgs=[];
 function cg(id,m){var g=document.getElementById(id);g.onclick=function(e){var c=e.target.closest('.chip');if(!c)return;if(m)c.classList.toggle('on');else{[].forEach.call(g.children,function(x){x.classList.remove('on')});c.classList.add('on')}}}
-cg('modo',0);cg('canais',1);cg('prof',0);cg('vstyle',0);cg('iq',0);
-function estiloVid(p){var s=one('vstyle');
- if(s==='apresentador')return p+' ESTILO APRESENTADOR: homem brasileiro simpatico, ~35 anos, vestindo uniforme polo azul (#2F64E0) com logo da Sayonara (gota d\'agua com telhado de casa) bordado no peito, em cozinha clara e moderna, com o produto EXATAMENTE como na foto de referencia sobre a bancada (nao alterar o produto). Ele olha para a camera e fala em portugues brasileiro, tom confiante e amigavel, apresentando o produto, e termina com: "Sayonara - onde a pureza encontra seu lar." Iluminacao natural suave, camera frontal estavel. Sem legendas ou textos na tela.';
- if(s==='lifestyle')return p+' ESTILO LIFESTYLE: cena real de casa brasileira clara e aconchegante, familia usando o produto no dia a dia, luz natural suave, tons brancos com detalhes em ciano (#2FD4E0), clima de pureza e bem-estar, sem textos na tela.';
- return p}
+cg('modo',0);cg('canais',1);cg('prof',0);
 function one(id){var e=document.querySelector('#'+id+' .chip.on');return e?e.dataset.v:''}
 function many(id){return[].map.call(document.querySelectorAll('#'+id+' .chip.on'),function(x){return x.dataset.v})}
 function v(id){var e=document.getElementById(id);return e?e.value.trim():''}
@@ -628,12 +657,11 @@ function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação
 var ULT={imagens:[],cenas:[]};
 function montarChips(imgs,cenas){
  ULT.imagens=imgs||[];ULT.cenas=cenas||[];
- var ic=document.getElementById('ichips');ic.innerHTML='';
- imgs.forEach(function(p,i){var d=document.createElement('div');d.className='chip';d.textContent='Imagem '+(i+1);d.onclick=function(){document.getElementById('iprompt').value=p;[].forEach.call(ic.children,function(x){x.classList.remove('on')});d.classList.add('on')};ic.appendChild(d)});
- var vc=document.getElementById('vchips');vc.innerHTML='';
- cenas.forEach(function(c,i){var d=document.createElement('div');d.className='chip';d.textContent='Cena '+(i+1)+' ('+c.seg+'s)';d.onclick=function(){document.getElementById('vprompt').value=c.prompt;var sl=document.getElementById('vsec');if(['4','8','12'].indexOf(c.seg)>-1)sl.value=c.seg;[].forEach.call(vc.children,function(x){x.classList.remove('on')});d.classList.add('on')};vc.appendChild(d)});
- if(ic.children.length){ic.children[0].click()}
- if(vc.children.length){vc.children[0].click()}
+ var r=document.getElementById('stresumo');if(!r)return;
+ var ni=ULT.imagens.length,nc=ULT.cenas.length;
+ if(!ni&&!nc){r.style.display='none';r.innerHTML='';return}
+ r.style.display='block';
+ r.innerHTML='Guardado para o STUDIO: <strong>'+ni+'</strong> prompt(s) de imagem e <strong>'+nc+'</strong> cena(s) de v\u00eddeo. Clique no bot\u00e3o abaixo para levar tudo junto com as fotos e as medidas.';
 }
 var canais=[];
 var ROT=['TITULO ALTERNATIVO','TITULO','FICHA TECNICA','BULLETS','DESCRICAO','PALAVRAS-CHAVE','ROTEIRO DO VIDEO','OBSERVACOES DO CANAL'];
@@ -823,72 +851,6 @@ document.getElementById('go').onclick=function(){
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
    if(j.result){document.getElementById('copy').style.display='block';montarChips(j.imagens||[],j.cenas||[]);montarCanais(j.result);pedirMedidas(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
  }).catch(function(e){btn.disabled=false;spinOff(false);out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
-document.getElementById('gopro').onclick=function(){var t=document.getElementById('iprompt');var q=t.value.trim();if(!q){alert('Escolha uma imagem na lista acima ou cole um prompt primeiro.');return}t.value=montaPrompt(q);t.scrollTop=0};
-document.getElementById('goimg').onclick=function(){
- var p=v('iprompt');if(!p){alert('Cole o prompt da imagem primeiro.');return}
- p=montaPrompt(p);
- var btn=this;btn.disabled=true;document.getElementById('ispin').style.display='block';document.getElementById('iout').style.display='none';
- fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:p,quality:one('iq')||'medium',imagens:imgs.map(function(o){return{data:o.data,media:o.media}})})})
- .then(function(r){return r.json()}).then(function(j){
-  btn.disabled=false;document.getElementById('ispin').style.display='none';
-  if(j.image){var u='data:image/png;base64,'+j.image;document.getElementById('iimg').src=u;document.getElementById('idl').href=u;document.getElementById('iout').style.display='block'}
-  else{alert(j.error||'Erro desconhecido.')}
- }).catch(function(e){btn.disabled=false;document.getElementById('ispin').style.display='none';alert('Falha de rede: '+e)});
-};
-var vimgs=[];
-var vin=document.getElementById('vimgIn'),vth=document.getElementById('vthumbs');
-function vRender(){vth.innerHTML=vimgs.map(function(o,i){return '<div class="thumb"><img src="'+o.url+'"><span data-x="'+i+'">×</span></div>'}).join('')}
-vin.onchange=function(){[].forEach.call(vin.files,function(f){if(vimgs.length>=4)return;var r=new FileReader();r.onload=function(){vimgs.push({data:r.result.split(',')[1],media:f.type,url:r.result});vRender()};r.readAsDataURL(f)});vin.value='';};
-vth.onclick=function(e){if(e.target.dataset&&e.target.dataset.x!==undefined&&e.target.dataset.x!==''){vimgs.splice(Number(e.target.dataset.x),1);vRender()}};
-function refLista(){var a=vimgs.length?vimgs:imgs;return a.slice(0,4).map(function(o){return{data:o.data,media:o.media}})}
-function promptPro(p){if(p.indexOf('[ESTUDIO PRO]')>-1)return p;
- return '[ESTUDIO PRO] Fotografia publicitaria de produto para e-commerce, padrao de estudio profissional, imagem quadrada 1:1 em altissima resolucao, produto perfeitamente nitido.\n\nO QUE MOSTRAR: '+p+'\n\nLUZ E CAMERA: uma unica fotografia real, camera full-frame com lente 50 mm em f/8, ISO 100. Luz principal de softbox grande a 45 graus acima e a esquerda, rebatedor branco do lado oposto abrindo as sombras, leve luz de contorno separando o produto do fundo. Sombra de contato suave e realista embaixo do produto. Sem flash estourado, sem sombra dura, sem halo, sem borda recortada, sem aparencia de montagem.\n\nCOMPOSICAO: produto centralizado e alinhado na vertical, ocupando cerca de 85% da altura do quadro, com a mesma margem de respiro dos quatro lados, camera na altura do meio do produto (nao de cima), silhueta limpa, nada cortado nas bordas.\n\nACABAMENTO: cores fieis e calibradas, branco realmente branco (#FFFFFF) sem cinza nem amarelado, textura real do material visivel, reflexos suaves e coerentes com a luz, foco nitido da frente ao fundo do produto, sem ruido e sem serrilhado.\n\nPROIBIDO: marca dagua, logotipo de banco de imagens, moldura, borda, colagem, montagem, texto inventado, letras tortas, borradas ou ilegiveis no rotulo, maos ou dedos deformados, produto duplicado, objetos cortados na borda, cenario bagunçado, aparencia de render 3D artificial, de ilustracao ou de desenho.'}
-function montaPrompt(p){return p.indexOf('[ESTUDIO PRO]')>-1?p:escala(promptPro(p))}
-function regraRefil(p){var nm=((v('nome')||'')+' '+(v('cat')||'')+' '+(p||'')).toLowerCase();
- if(nm.indexOf('refil')<0&&nm.indexOf('purificador')<0&&nm.indexOf('elemento filtrante')<0&&nm.indexOf('cartucho')<0)return '';
- return ' ESCALA REAL OBRIGATORIA: o refil/elemento filtrante mede 22 cm de altura por 6,3 cm de diametro - do tamanho de uma garrafa de agua de 500 ml; cabe inteiro em uma mao, os dedos se fecham em volta do corpo dele e o polegar quase encosta na ponta dos dedos; ocupa cerca de um quinto da altura do tronco da pessoa. O purificador de bancada mede 43 cm de altura por 33 cm de largura por 35 cm de profundidade - do tamanho de um micro-ondas pequeno; quando aparecer, aparece INTEIRO no enquadramento, apoiado sobre a bancada, ao lado da pessoa e na MESMA distancia da camera. PROPORCAO FIXA: a altura do purificador e o DOBRO da altura do refil. Se o refil parecer maior que metade do purificador, esta errado. Uma unica fotografia real, lente 50 mm, mesma luz e mesma profundidade para pessoa e produtos, sem colagem.'}
-function escala(p){var n=refLista().length,rr=regraRefil(p);if(!n)return p+rr;
- var t=p+' FIDELIDADE AO PRODUTO: reproduza o(s) produto(s) EXATAMENTE como nas fotos de referencia - mesmo formato, mesmas cores, mesma marca e mesmos textos do rotulo (nao invente nem distorca letras).';
- if(n>1)t+=' Sao '+n+' produtos diferentes nas referencias: respeite o TAMANHO REAL e a PROPORCAO entre eles. Nunca aumente o item menor nem encolha o maior.';
- else t+=' Mantenha a escala real do produto em relacao a pessoa e ao ambiente.';
- return t+rr}
-function refVideo(cb){var ref=vimgs[0]||imgs[0];if(!ref){cb(null);return}var dims=v('vsize')==='1280x720'?[1280,720]:[720,1280];var im=new Image();im.onload=function(){var c=document.createElement('canvas');c.width=dims[0];c.height=dims[1];var x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);var e=Math.min(c.width/im.width,c.height/im.height);var nw=im.width*e,nh=im.height*e;x.drawImage(im,(c.width-nw)/2,(c.height-nh)/2,nw,nh);cb(c.toDataURL('image/png').split(',')[1])};im.onerror=function(){cb(null)};im.src=ref.url}
-document.getElementById('govid').onclick=function(){
- var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
- var btn=this;btn.disabled=true;document.getElementById('vspin').style.display='block';document.getElementById('vout').style.display='none';
- refVideo(function(b64){
- fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:escala(estiloVid(p)),seconds:v('vsec'),size:v('vsize'),imageBase64:b64,mediaType:b64?'image/png':null})})
- .then(function(r){return r.json()}).then(function(j){
-  btn.disabled=false;document.getElementById('vspin').style.display='none';
-  if(j.video){var u='data:video/mp4;base64,'+j.video;document.getElementById('vvid').src=u;document.getElementById('vdl').href=u;document.getElementById('vout').style.display='block'}
-  else{alert(j.error||'Erro desconhecido.')}
- }).catch(function(e){btn.disabled=false;document.getElementById('vspin').style.display='none';alert('Falha de rede: '+e)});
- });
-};
-document.getElementById('goprev').onclick=function(){
- var p=v('vprompt');if(!p){alert('Escolha uma cena ou cole o prompt primeiro.');return}
- var btn=this;btn.disabled=true;document.getElementById('pspin').style.display='block';document.getElementById('pout').style.display='none';
- var rd=refLista();var sz=v('vsize')==='1280x720'?'1536x1024':'1024x1536';
- fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt:escala(estiloVid(p))+' (quadro estatico do video, sem texto na imagem)',size:sz,quality:'medium',imagens:rd})})
- .then(function(r){return r.json()}).then(function(j){
-  btn.disabled=false;document.getElementById('pspin').style.display='none';
-  if(j.image){document.getElementById('pimg').src='data:image/png;base64,'+j.image;document.getElementById('pout').style.display='block'}
-  else{alert(j.error||'Erro desconhecido.')}
- }).catch(function(e){btn.disabled=false;document.getElementById('pspin').style.display='none';alert('Falha de rede: '+e)});
-};
-function corrigir(tipo,campoPrompt,campoFix,btn,rotulo,depois){
- var p=v(campoPrompt),a=v(campoFix);if(!a){alert('Escreva o que quer mudar.');return}
- btn.disabled=true;btn.textContent='⏳ Reescrevendo...';
- fetch('/api/fix',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({tipo:tipo,prompt:p,ajuste:a})})
- .then(function(r){return r.json()}).then(function(j){
-  btn.disabled=false;btn.textContent=rotulo;
-  if(j.prompt){document.getElementById(campoPrompt).value=j.prompt;document.getElementById(campoFix).value='';if(depois)depois()}
-  else{alert(j.error||'Erro desconhecido.')}
- }).catch(function(e){btn.disabled=false;btn.textContent=rotulo;alert('Falha de rede: '+e)});
-}
-document.getElementById('goifix').onclick=function(){corrigir('imagem','iprompt','ifix',this,'\ud83d\udd27 Corrigir e gerar de novo',function(){document.getElementById('goimg').click()})};
-document.getElementById('govfix').onclick=function(){corrigir('video','vprompt','vfix',this,'\ud83d\udd27 Corrigir prompt da cena',null)};
-document.getElementById('gopfix').onclick=function(){corrigir('video','vprompt','pfix',this,'\ud83d\udd27 Corrigir e gerar prévia de novo',function(){document.getElementById('goprev').click()})};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
 try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';montarChips(_d.imagens||[],_d.cenas||[]);montarCanais(_d.result)}}}catch(x){}
 document.getElementById('gostudio').onclick=function(){
