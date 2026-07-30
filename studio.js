@@ -124,6 +124,16 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
   </div>
  </div>
 
+ <div class="card" id="cfor">
+  <h2>Colar a ficha do fornecedor<span class="gratis">NÃO CUSTA NADA</span></h2>
+  <p>Aquele bloco de especificações que o fornecedor manda no WhatsApp ou no site — medidas, capacidades, material, o que vem na caixa. <strong>Cole aqui inteiro, do jeito que veio.</strong> Eu leio, separo, e mostro o que entendi. Só depois que você conferir e mandar é que isso desce para a ficha ali embaixo.</p>
+  <p style="font-size:.86rem">Isto é leitura de texto dentro do seu próprio navegador: <strong>não é IA e não custa nada</strong>. Pode colar e apagar quantas vezes quiser.</p>
+  <div class="field"><label>Ficha do fornecedor — cole o texto inteiro</label><textarea id="fdTxt" style="min-height:150px;font-size:.88rem" placeholder="Ex.:&#10;Produto: Kit 15 Potes Herméticos Quadrados&#10;Marca: RISHON&#10;Material: Plástico ABS Premium, livre de BPA&#10;Vedação de silicone, tampa com trava, empilháveis&#10;4 potes 0,8 L - 9 x 10 x 9 cm&#10;6 potes 1,4 L - 13 x 14 x 10 cm&#10;4 potes 2,0 L - 20 x 14 x 10 cm&#10;1 pote 2,8 L - 30 x 14 x 10 cm&#10;Conteúdo da embalagem: 15 potes + 1 cartela de etiquetas"></textarea></div>
+  <button class="btn btn-p" id="fdLer">Ler e me mostrar o que você entendeu</button>
+  <div id="fdMsg"></div>
+  <div id="fdOut"></div>
+ </div>
+
  <div class="card">
   <h2>3 · Ficha do produto</h2>
   <p>É daqui que saem as 6 fotos do anúncio. O que estiver escrito aqui é o que a imagem vai mostrar — e só isso. Campo vazio é foto que não sai: prefiro te perguntar a inventar um detalhe que o produto não tem.</p>
@@ -726,6 +736,271 @@ q('aGo').onclick=function(){
   btn.disabled=false;btn.textContent='Analisar a imagem e montar o prompt perfeito';
   msg.innerHTML='<div class="erro">Não consegui falar com a análise. '+esc(String(e&&e.message||e))+'</div>';
  });
+};
+
+/* ====== leitor da ficha do fornecedor ======
+   Texto puro, dentro do navegador: nenhuma chamada de API, nenhum custo.
+   Nada é escrito na ficha sem ela confirmar — o botão de usar só aparece
+   depois que ela lê o que foi entendido. */
+var FDR = null;
+
+var FDVIS = [
+ [/veda(?:\u00e7|c)(?:\u00e3|a)o|silicone|anel de borracha|gaxeta/i, 'veda\u00e7\u00e3o de silicone na tampa'],
+ [/trava|clique|clip|presilha|fecho lateral/i, 'tampa com trava que fecha no clique'],
+ [/empilh/i, 'pe\u00e7as empilh\u00e1veis, uma encaixando na outra'],
+ [/transparente|cristal/i, 'corpo transparente, d\u00e1 para ver o que est\u00e1 dentro'],
+ [/herm(?:\u00e9|e)tic/i, 'fechamento herm\u00e9tico'],
+ [/etiqueta|adesiv/i, 'cartela de etiquetas adesivas'],
+ [/bico dosador|dosador/i, 'bico dosador'],
+ [/al(?:\u00e7|c)a/i, 'al\u00e7a'],
+ [/medidor|gradua(?:\u00e7|c)(?:\u00e3|a)o|escala em ml/i, 'marca\u00e7\u00e3o de medida no corpo'],
+ [/antiderrapante|base de borracha/i, 'base antiderrapante'],
+ [/tampa colorida|tampa rosa|tampa azul|tampa verde|tampa preta|tampa branca/i, 'tampa colorida contrastando com o corpo'],
+ [/dobr(?:\u00e1|a)vel|retr(?:\u00e1|a)til/i, 'pe\u00e7a dobr\u00e1vel'],
+ [/inox|a(?:\u00e7|c)o inox/i, 'acabamento em a\u00e7o inox']
+];
+
+var FDINVIS = [
+ [/bpa/i, 'livre de BPA'],
+ [/at(?:\u00f3|o)xic/i, 'at\u00f3xico'],
+ [/lava.?lou(?:\u00e7|c)as/i, 'pode ir na lava-lou\u00e7as'],
+ [/micro.?ondas/i, 'pode ir no micro-ondas'],
+ [/freezer|congelador/i, 'pode ir no freezer'],
+ [/garantia/i, 'garantia'],
+ [/certifica|anvisa|inmetro|iso 9001/i, 'certifica\u00e7\u00e3o'],
+ [/vaz(?:\u00e3|a)o|litros?\/hora|l\/h/i, 'vaz\u00e3o'],
+ [/durabilidade|vida (?:\u00fa|u)til|meses de uso/i, 'durabilidade']
+];
+
+function fdLimpa(t){
+ return String(t == null ? '' : t)
+  .replace(/\u00a0/g, ' ')
+  .replace(/[\u00d7\u2715\u2716\u2a2f]/g, 'x')
+  .replace(/\r/g, '')
+  .replace(/[\t ]+/g, ' ');
+}
+function fdConv(n, u){
+ var v = parseFloat(String(n).replace(',', '.'));
+ if(!isFinite(v) || v <= 0) return 0;
+ if(u === 'mm') v = v / 10;
+ if(u === 'm') v = v * 100;
+ return Math.round(v * 100) / 100;
+}
+function fdDims(l){
+ var s = l.toLowerCase(), d = {h:0, w:0, p:0}, achou = false;
+ var lab = [
+  ['h', /(?:altura|alt\.?|height)\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(cm|mm)?/],
+  ['w', /(?:largura|larg\.?|di(?:\u00e2|a)metro|di(?:\u00e2|a)m\.?|width)\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(cm|mm)?/],
+  ['p', /(?:profundidade|prof\.?|comprimento|comp\.?|depth)\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(cm|mm)?/]
+ ];
+ for(var i = 0; i < lab.length; i++){
+  var m = s.match(lab[i][1]);
+  if(m){ d[lab[i][0]] = fdConv(m[1], m[2] || 'cm'); achou = true }
+ }
+ if(achou) return d;
+ var m2 = s.match(/([0-9]+(?:[.,][0-9]+)?)\s*(cm|mm)?\s*x\s*([0-9]+(?:[.,][0-9]+)?)\s*(cm|mm)?(?:\s*x\s*([0-9]+(?:[.,][0-9]+)?)\s*(cm|mm)?)?/);
+ if(m2){
+  var u = m2[2] || m2[4] || m2[6] || 'cm';
+  d.h = fdConv(m2[1], m2[2] || u);
+  d.w = fdConv(m2[3], m2[4] || u);
+  if(m2[5]) d.p = fdConv(m2[5], m2[6] || u);
+  return d;
+ }
+ var m3 = s.match(/([0-9]+(?:[.,][0-9]+)?)\s*(cm|mm)\b/);
+ if(m3) d.h = fdConv(m3[1], m3[2]);
+ return d;
+}
+function fdQtd(l){
+ var s = l.toLowerCase();
+ var m = s.match(/(?:^|[^0-9a-z\u00e0-\u00ff.,])([0-9]{1,3})\s*(?:un\b|und\b|unid[a-z]*|pe(?:\u00e7|c)as?\b|pcs\b|potes?\b|itens?\b|pares?\b|copos?\b|tampas?\b)/);
+ if(m) return parseInt(m[1], 10);
+ m = s.match(/^\s*([0-9]{1,3})\s*x\s*[^0-9]/);
+ if(m) return parseInt(m[1], 10);
+ m = s.match(/^\s*([0-9]{1,3})\s*[-\u2013\u2014|]/);
+ if(m) return parseInt(m[1], 10);
+ return 0;
+}
+function fdNome(l){
+ var s = l.toLowerCase();
+ var t = [['potes?','pote'],['copos?','copo'],['tampas?','tampa'],['bandejas?','bandeja'],
+          ['jarras?','jarra'],['garrafas?','garrafa'],['panelas?','panela'],['formas?','forma'],
+          ['pratos?','prato'],['tigelas?','tigela'],['cestos?','cesto'],['caixas?','caixa'],
+          ['refis|refil','refil'],['filtros?','filtro'],['velas?','vela']];
+ for(var i = 0; i < t.length; i++){ if(new RegExp('\\b(?:' + t[i][0] + ')\\b').test(s)) return t[i][1] }
+ return '';
+}
+function fdCap(l){
+ var m = l.toLowerCase().match(/([0-9]+(?:[.,][0-9]+)?)\s*(ml|lt|l|litros?)\b/);
+ if(!m) return '';
+ var v = m[1].replace('.', ',');
+ return m[2] === 'ml' ? (v + ' ml') : (v + ' L');
+}
+function fdIgnora(l){
+ return /caixa m(?:\u00e1|a)ster|embalagem|pacote|frete|peso|cubagem|volume da caixa|master|c(?:\u00f3|o)digo de barras|ean|ncm|sku do fornecedor|pre(?:\u00e7|c)o|valor|cnpj|minimo|m(?:\u00ed|i)nimo/i.test(l);
+}
+function fdPedacos(txt){
+ var saida = [];
+ fdLimpa(txt).split('\n').forEach(function(linha){
+  linha.split(/[;\u2022\u00b7]/).forEach(function(l){
+   l = l.trim();
+   if(!l) return;
+   var re = /(?:^|[^0-9a-z])([0-9]{1,3})\s*(?:un\b|und\b|unid[a-z]*|pe(?:\u00e7|c)as?\b|pcs\b|potes?\b|itens?\b|copos?\b)/gi;
+   var pos = [], m;
+   while((m = re.exec(l)) !== null){
+    var i = m.index;
+    while(i < l.length && !/[0-9]/.test(l.charAt(i))) i++;
+    pos.push(i);
+   }
+   if(pos.length > 1){
+    if(pos[0] > 0) saida.push(l.slice(0, pos[0]).trim());
+    for(var k = 0; k < pos.length; k++) saida.push(l.slice(pos[k], k + 1 < pos.length ? pos[k+1] : l.length).trim());
+   } else {
+    saida.push(l);
+   }
+  });
+ });
+ return saida.filter(function(x){ return !!x });
+}
+function fdCampo(txt, chaves){
+ var linhas = fdLimpa(txt).split('\n');
+ var re = new RegExp('^ ?(?:' + chaves + ')\\s*[:\\-\u2013]\\s*(.+)$', 'i');
+ for(var i = 0; i < linhas.length; i++){
+  var m = linhas[i].trim().match(re);
+  if(m && m[1].trim()) return m[1].trim().replace(/[.;]+$/, '');
+ }
+ return '';
+}
+function fdLista(txt, tabela){
+ var achados = [];
+ tabela.forEach(function(par){
+  if(par[0].test(txt) && achados.indexOf(par[1]) < 0) achados.push(par[1]);
+ });
+ return achados;
+}
+
+function fdLeitura(txt){
+ var r = {nome:'', cat:'', marcaForn:'', material:'', cor:'', caixa:'', pecas:[], vis:[], invis:[], sobra:[]};
+ if(!fdLimpa(txt).trim()) return r;
+
+ r.nome = fdCampo(txt, 'nome do produto|nome|produto|t(?:\u00ed|i)tulo|titulo|item|modelo');
+ r.cat = fdCampo(txt, 'categoria|tipo|segmento');
+ r.marcaForn = fdCampo(txt, 'marca|fabricante|fornecedor|brand');
+ r.material = fdCampo(txt, 'material|composi(?:\u00e7|c)(?:\u00e3|a)o|mat(?:\u00e9|e)ria prima');
+ r.cor = fdCampo(txt, 'cor|cores|colora(?:\u00e7|c)(?:\u00e3|a)o');
+ r.caixa = fdCampo(txt, 'conte(?:\u00fa|u)do da embalagem|conte(?:\u00fa|u)do|o que vem na caixa|itens inclusos|itens|inclui|acompanha|acompanham|embalagem cont(?:\u00e9|e)m|composi(?:\u00e7|c)(?:\u00e3|a)o do kit|kit cont(?:\u00e9|e)m');
+
+ fdPedacos(txt).forEach(function(l){
+  if(fdIgnora(l)) return;
+  var d = fdDims(l);
+  if(!(d.h > 0)) return;
+  var qtd = fdQtd(l), cap = fdCap(l);
+  if(!qtd && !cap) return;
+  var nom = fdNome(l);
+  var rot = cap ? ((nom ? nom + ' ' : '') + cap) : (nom ? nom : (qtd + (qtd > 1 ? ' pe\u00e7as' : ' pe\u00e7a')));
+  r.pecas.push({qtd: qtd || 1, rot: rot, h: d.h, w: d.w, p: d.p, linha: l});
+ });
+
+ r.vis = fdLista(txt, FDVIS);
+ r.invis = fdLista(txt, FDINVIS);
+ return r;
+}
+
+function fdCaixaSugerida(r){
+ if(r.caixa) return r.caixa;
+ if(!r.pecas.length) return '';
+ var t = r.pecas.map(function(p){ return p.qtd + ' de ' + p.rot }).join(', ');
+ return totalPecas(r.pecas) + ' pe\u00e7as no total (' + t + '). Nada al\u00e9m disso.';
+}
+function fdDifSugerido(r){
+ if(!r.vis.length) return '';
+ return r.vis.join('; ') + '.';
+}
+
+function fdBloco(id, titulo, valor, alvo, nota){
+ var jaTem = alvo ? (q(alvo).value || '').trim() : '';
+ var h = '<div class="field" style="margin-top:14px">';
+ h += '<label class="lbl-chk"><input type="checkbox" id="' + id + '" checked>' + titulo + '</label>';
+ h += '<div class="saida" style="margin-top:6px;white-space:pre-wrap">' + esc(valor) + '</div>';
+ if(nota) h += '<div style="font-size:.8rem;color:var(--db-cinza);margin-top:4px">' + nota + '</div>';
+ if(jaTem && jaTem !== valor) h += '<div style="font-size:.8rem;color:var(--db-rosa-texto);margin-top:4px">Esse campo j\u00e1 tem texto escrito. Se deixar marcado, o texto de agora <strong>substitui</strong> o que estava l\u00e1.</div>';
+ h += '</div>';
+ return h;
+}
+
+q('fdLer').onclick = function(){
+ var r = fdLeitura(q('fdTxt').value);
+ FDR = r;
+ var msg = q('fdMsg'), out = q('fdOut');
+ out.innerHTML = '';
+ if(!fdLimpa(q('fdTxt').value).trim()){
+  msg.innerHTML = '<div class="erro">Cole primeiro a ficha do fornecedor aqui em cima. Pode ser o texto do WhatsApp, do site ou do PDF \u2014 do jeito que veio.</div>';
+  return;
+ }
+ var dif = fdDifSugerido(r), caixa = fdCaixaSugerida(r);
+ var achouAlgo = r.nome || r.cat || dif || caixa || r.pecas.length;
+ if(!achouAlgo){
+  msg.innerHTML = '<div class="erro">Li o texto inteiro e n\u00e3o consegui separar nada com seguran\u00e7a. Em vez de chutar, prefiro te avisar: preencha a ficha na m\u00e3o ali embaixo, ou cole um texto que tenha pelo menos as medidas em cm (por exemplo <strong>4 potes 0,8 L - 9 x 10 x 9 cm</strong>).</div>';
+  return;
+ }
+ msg.innerHTML = '';
+ var h = '<div class="aviso ok" style="margin-top:14px"><strong>Entendi assim \u2014 confira antes de eu usar.</strong><br>Nada foi escrito na ficha ainda. Desmarque o que n\u00e3o quiser e clique no bot\u00e3o l\u00e1 embaixo.</div>';
+
+ if(r.nome) h += fdBloco('fdcNome', 'Nome do produto', r.nome, 'fNome', '');
+ if(r.cat) h += fdBloco('fdcCat', 'Categoria', r.cat, 'fCat', '');
+ if(dif) h += fdBloco('fdcDif', 'Diferencial que d\u00e1 para VER numa foto', dif, 'fDif', 'S\u00f3 entrou aqui o que aparece na imagem. O resto est\u00e1 listado mais abaixo.');
+ if(caixa) h += fdBloco('fdcCaixa', 'O que vem na caixa', caixa, 'fCaixa', '');
+
+ if(r.pecas.length){
+  var linhas = r.pecas.map(function(p){
+   return p.qtd + ' | ' + p.rot + ' | ' + fmt(p.h) + (p.w ? ' x ' + fmt(p.w) : '') + (p.p ? ' x ' + fmt(p.p) : '');
+  }).join('\n');
+  var det = r.pecas.map(function(p){
+   return p.qtd + ' \u00d7 ' + esc(p.rot) + ' \u2014 ' + fmt(p.h) + ' cm de altura' + (p.w ? ' \u00d7 ' + fmt(p.w) + ' cm' : '') + (p.p ? ' \u00d7 ' + fmt(p.p) + ' cm' : '');
+  }).join('\n');
+  h += fdBloco('fdcPecas', 'As pe\u00e7as do kit \u2014 ' + totalPecas(r.pecas) + ' pe\u00e7as em ' + r.pecas.length + ' tamanhos', det, 'fPecas',
+   'Se eu marcar isso, o modo <strong>kit</strong> liga sozinho na ficha e esse total vai escrito por extenso dentro dos prompts das fotos 1, 5 e 6. <strong>Confira o total agora</strong> \u2014 total errado aqui \u00e9 pote a mais ou a menos na foto.');
+  FDR.linhasKit = linhas;
+ }
+
+ if(r.invis.length){
+  h += '<div class="aviso" style="margin-top:14px"><strong>Isto eu li, mas deixei de fora do diferencial de prop\u00f3sito:</strong><br>' + r.invis.map(esc).join(' \u00b7 ') + '<br><br>N\u00e3o \u00e9 esquecimento: nada disso aparece numa foto. Escrever na imagem vira texto inventado, e texto inventado em foto de an\u00fancio d\u00e1 reclama\u00e7\u00e3o. Esses pontos valem ouro no <strong>texto</strong> do an\u00fancio \u2014 use l\u00e1, n\u00e3o aqui.</div>';
+ }
+ if(r.marcaForn){
+  h += '<div class="aviso" style="margin-top:14px"><strong>Marca do fornecedor: ' + esc(r.marcaForn) + '.</strong> N\u00e3o coloquei isso na ficha e n\u00e3o vou colocar. A marca que vai no an\u00fancio \u00e9 escolha sua \u2014 Sayonara, Dona Beg\u00f4 ou Purif\u00e1cil \u2014 e o nome do fabricante \u00e9 justamente uma das coisas que os prompts mandam a IA n\u00e3o desenhar.</div>';
+ }
+ if(r.material || r.cor){
+  var ex = [];
+  if(r.material) ex.push('Material: ' + r.material);
+  if(r.cor) ex.push('Cor: ' + r.cor);
+  h += '<div class="aviso" style="margin-top:14px">' + ex.map(esc).join('<br>') + '<br><br>Material e cor eu n\u00e3o escrevo na ficha sozinho: a cor de verdade sai da <strong>foto real</strong>, que \u00e9 mais confi\u00e1vel que a palavra do fornecedor. Se quiser, copie \u00e0 m\u00e3o para o diferencial.</div>';
+ }
+
+ h += '<button class="btn btn-p" id="fdUsar" style="margin-top:16px">Usar isso na ficha</button>';
+ h += '<div class="custo">Nada sai do seu computador nesta etapa e nada foi cobrado.</div>';
+ out.innerHTML = h;
+
+ q('fdUsar').onclick = function(){
+  var feitos = [];
+  function marcado(id){ var e = document.getElementById(id); return e && e.checked }
+  if(marcado('fdcNome')){ q('fNome').value = FDR.nome; feitos.push('nome do produto') }
+  if(marcado('fdcCat')){ q('fCat').value = FDR.cat; feitos.push('categoria') }
+  if(marcado('fdcDif')){ q('fDif').value = fdDifSugerido(FDR); feitos.push('diferencial') }
+  if(marcado('fdcCaixa')){ q('fCaixa').value = fdCaixaSugerida(FDR); feitos.push('o que vem na caixa') }
+  if(marcado('fdcPecas') && FDR.linhasKit){
+   if(!q('fKit').checked){ q('fKit').checked = true; q('kitBox').style.display = 'block' }
+   q('fPecas').value = FDR.linhasKit;
+   q('kitLer').onclick();
+   feitos.push('as pe\u00e7as do kit, com o modo kit ligado');
+  }
+  if(!feitos.length){
+   q('fdMsg').innerHTML = '<div class="erro">Voc\u00ea desmarcou tudo, ent\u00e3o eu n\u00e3o mexi em nada da ficha.</div>';
+   return;
+  }
+  this.disabled = true;
+  this.textContent = 'Pronto, j\u00e1 est\u00e1 na ficha';
+  q('fdMsg').innerHTML = '<div class="aviso ok">Preenchi na ficha: ' + feitos.join(', ') + '. Agora d\u00ea uma olhada l\u00e1 embaixo, corrija o que quiser com as suas palavras, anexe as fotos reais e s\u00f3 depois clique em <strong>Montar os 6 prompts</strong>.</div>';
+  q('fNome').scrollIntoView({behavior:'smooth', block:'center'});
+ };
 };
 
 /* ====== recorte da arte do fornecedor ======
