@@ -148,9 +148,30 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 
   <div class="field" style="margin-top:16px"><label>Fotos reais do produto (até 4)</label><input type="file" id="fFotos" accept="image/*" multiple></div>
   <div class="tira" id="fThumbs"></div>
-  <div class="aviso">A foto real é o que segura a fidelidade: cor, formato, textura e rótulo saem dela. Sem foto real eu até gero, mas aí é desenho do que a IA acha que o seu produto é — e isso não vai para anúncio.</div>
+  <div class="aviso">A foto real é o que segura a fidelidade: cor, formato, textura e rótulo saem dela. Sem foto real eu até gero, mas aí é desenho do que a IA acha que o seu produto é — e isso não vai para anúncio. Não tem foto limpa, só aquela arte do fornecedor cheia de texto e marca? Use o <strong>recorte</strong> logo aqui embaixo.</div>
   <button class="btn btn-p" id="fMontar">Montar os 6 prompts</button>
   <div id="fMsg"></div>
+ </div>
+
+ <div class="card" id="crec">
+  <h2>Só tenho a arte do fornecedor<span class="gratis">NÃO CUSTA NADA</span></h2>
+  <p>Quando não existe foto limpa do produto — só aquela arte do fornecedor cheia de texto, seta, selo e a marca deles — dá para aproveitar assim mesmo: <strong>recorte só o produto</strong>. O pedaço recortado entra como foto real, e aí a IA copia a cor, o formato e o rótulo certos em vez de inventar.</p>
+  <p style="font-size:.86rem">Isto aqui é recorte de imagem dentro do seu próprio navegador: <strong>não é IA e não custa nada</strong>. A arte só sai do seu computador quando você mandar gerar uma foto.</p>
+  <div class="field"><label>Arte do fornecedor</label><input type="file" id="rcFile" accept="image/*"></div>
+  <div id="rcArea" style="display:none">
+   <div class="aviso" style="margin-bottom:10px">Arraste o mouse em cima do produto para marcar o recorte. Corte fora <strong>a marca do fornecedor, textos, números, preços, selos, setas e qualquer outra marca</strong> — o que sobrar dentro do quadro é exatamente o que a IA vai copiar.</div>
+   <div id="rcWrap" style="position:relative;display:inline-block;max-width:100%;cursor:crosshair;touch-action:none;line-height:0;border:1px solid var(--db-linha);border-radius:8px;overflow:hidden">
+    <canvas id="rcCv" style="max-width:100%;display:block"></canvas>
+    <div id="rcSel" style="position:absolute;display:none;border:2px dashed var(--db-rosa);background:rgba(233,44,86,.14);pointer-events:none"></div>
+   </div>
+   <div id="rcInfo" style="margin-top:8px;font-size:.86rem;color:var(--db-cinza-forte)"></div>
+   <div class="field" style="margin-top:12px"><label class="lbl-chk"><input type="checkbox" id="rcBranco" checked>Deixar quadrado, centralizado e com fundo branco</label></div>
+   <button class="btn btn-p" id="rcUsar">Recortar e usar como foto real</button>
+   <button class="btn btn-g" id="rcBaixar" style="margin-top:8px;width:100%">Recortar e baixar o arquivo</button>
+   <div id="rcMsg"></div>
+   <div class="tira" id="rcOut" style="margin-top:10px"></div>
+   <div class="aviso" style="margin-top:4px">Se depois você trocar as fotos reais lá em cima, a lista começa do zero e o recorte sai junto — nesse caso é só clicar de novo em <strong>usar como foto real</strong>.</div>
+  </div>
  </div>
 
  <div class="card" id="cfotos" style="display:none">
@@ -705,6 +726,122 @@ q('aGo').onclick=function(){
   btn.disabled=false;btn.textContent='Analisar a imagem e montar o prompt perfeito';
   msg.innerHTML='<div class="erro">Não consegui falar com a análise. '+esc(String(e&&e.message||e))+'</div>';
  });
+};
+
+/* ====== recorte da arte do fornecedor ======
+   Canvas puro: nenhuma chamada de API, nenhum custo. Serve para quando o
+   fornecedor so mandou a arte pronta e nao existe foto limpa do produto.
+   O recorte entra em FOTOS_REAIS, que e o que segura a fidelidade da IA. */
+var RCX=0,RCY=0,RCW=0,RCH=0,RCDRAG=false,RCSX=0,RCSY=0,RCPRONTO=false;
+
+q('rcFile').onchange=function(){
+ var f=(this.files||[])[0];
+ if(!f){RCPRONTO=false;q('rcArea').style.display='none';return}
+ var fr=new FileReader();
+ fr.onload=function(){
+  var im=new Image();
+  im.onload=function(){
+   var m=1600,w=im.width,h=im.height;
+   if(w>m||h>m){if(w>h){h=Math.round(h*m/w);w=m}else{w=Math.round(w*m/h);h=m}}
+   var c=q('rcCv');c.width=w;c.height=h;
+   c.getContext('2d').drawImage(im,0,0,w,h);
+   RCPRONTO=true;RCW=0;RCH=0;
+   q('rcArea').style.display='';
+   q('rcSel').style.display='none';
+   q('rcMsg').innerHTML='';
+   q('rcInfo').innerHTML='Arte carregada, '+w+' por '+h+' pontos. Agora arraste o mouse em cima do produto.';
+  };
+  im.src=fr.result;
+ };
+ fr.readAsDataURL(f);
+};
+
+function rcPos(ev){
+ var c=q('rcCv'),r=c.getBoundingClientRect();
+ var t=(ev.touches&&ev.touches[0])?ev.touches[0]:ev;
+ var x=(t.clientX-r.left)*c.width/r.width;
+ var y=(t.clientY-r.top)*c.height/r.height;
+ return {x:Math.max(0,Math.min(c.width,x)),y:Math.max(0,Math.min(c.height,y))};
+}
+function rcDesenha(){
+ var c=q('rcCv'),r=c.getBoundingClientRect(),s=q('rcSel');
+ if(RCW<2||RCH<2){s.style.display='none';return}
+ var k=r.width/c.width;
+ s.style.display='';
+ s.style.left=Math.round(RCX*k)+'px';
+ s.style.top=Math.round(RCY*k)+'px';
+ s.style.width=Math.round(RCW*k)+'px';
+ s.style.height=Math.round(RCH*k)+'px';
+}
+function rcTexto(){
+ var w=Math.round(RCW),h=Math.round(RCH);
+ if(w<2||h<2){q('rcInfo').innerHTML='Arraste o mouse em cima do produto para marcar o recorte.';return}
+ var t='Recorte de '+w+' por '+h+' pontos. ';
+ if(w<300||h<300)t+='<strong>Está pequeno.</strong> Abaixo de 300 pontos a referência fica borrada e a IA copia errado. Se der, pegue um pedaço maior, ou peça ao fornecedor a arte em qualidade melhor.';
+ else t+='Bom tamanho para servir de referência.';
+ q('rcInfo').innerHTML=t;
+}
+function rcStart(ev){
+ if(!RCPRONTO)return;
+ ev.preventDefault();
+ var p=rcPos(ev);RCDRAG=true;RCSX=p.x;RCSY=p.y;RCX=p.x;RCY=p.y;RCW=0;RCH=0;
+ rcDesenha();rcTexto();
+}
+function rcMove(ev){
+ if(!RCDRAG)return;
+ ev.preventDefault();
+ var p=rcPos(ev);
+ RCX=Math.min(RCSX,p.x);RCY=Math.min(RCSY,p.y);
+ RCW=Math.abs(p.x-RCSX);RCH=Math.abs(p.y-RCSY);
+ rcDesenha();rcTexto();
+}
+function rcEnd(){if(RCDRAG){RCDRAG=false;rcTexto()}}
+q('rcWrap').addEventListener('mousedown',rcStart);
+window.addEventListener('mousemove',rcMove);
+window.addEventListener('mouseup',rcEnd);
+q('rcWrap').addEventListener('touchstart',rcStart,{passive:false});
+q('rcWrap').addEventListener('touchmove',rcMove,{passive:false});
+window.addEventListener('touchend',rcEnd);
+window.addEventListener('resize',rcDesenha);
+
+function rcCorta(){
+ if(!RCPRONTO||RCW<2||RCH<2)return null;
+ var o=q('rcCv');
+ var sx=Math.round(RCX),sy=Math.round(RCY),sw=Math.round(RCW),sh=Math.round(RCH);
+ if(sx+sw>o.width)sw=o.width-sx;
+ if(sy+sh>o.height)sh=o.height-sy;
+ if(sw<2||sh<2)return null;
+ var c=document.createElement('canvas'),g;
+ if(q('rcBranco').checked){
+  var lado=Math.max(sw,sh),pad=Math.round(lado*0.08),tot=lado+pad*2;
+  c.width=tot;c.height=tot;g=c.getContext('2d');
+  g.fillStyle='#FFFFFF';g.fillRect(0,0,tot,tot);
+  g.drawImage(o,sx,sy,sw,sh,Math.round((tot-sw)/2),Math.round((tot-sh)/2),sw,sh);
+ }else{
+  c.width=sw;c.height=sh;g=c.getContext('2d');
+  g.drawImage(o,sx,sy,sw,sh,0,0,sw,sh);
+ }
+ return c.toDataURL('image/png');
+}
+function rcErroMarque(){
+ q('rcMsg').innerHTML='<div class="erro">Marque o recorte primeiro: arraste o mouse em cima do produto, dentro da arte.</div>';
+}
+q('rcUsar').onclick=function(){
+ var u=rcCorta();
+ if(!u){rcErroMarque();return}
+ if(FOTOS_REAIS.length>=4){q('rcMsg').innerHTML='<div class="erro">Já são 4 fotos reais, que é o limite. Troque as fotos lá em cima antes de colocar outra.</div>';return}
+ FOTOS_REAIS.push({data:u.split(',')[1],media:'image/png'});
+ var a=document.createElement('img');a.className='thumb';a.src=u;q('fThumbs').appendChild(a);
+ var b=document.createElement('img');b.className='thumb';b.src=u;q('rcOut').appendChild(b);
+ q('rcMsg').innerHTML='<div class="aviso ok" style="margin-top:10px">Pronto. O recorte entrou nas fotos reais do produto, agora são '+FOTOS_REAIS.length+'. Antes de montar os prompts, olhe a miniatura lá em cima e confira se não sobrou nenhum texto ou marca dentro dele.</div>';
+};
+q('rcBaixar').onclick=function(){
+ var u=rcCorta();
+ if(!u){rcErroMarque();return}
+ var nome=(q('fSku').value||q('fNome').value||'produto').replace(/[^A-Za-z0-9_-]+/g,'-').slice(0,40);
+ var a=document.createElement('a');a.href=u;a.download='recorte-'+nome+'.png';
+ document.body.appendChild(a);a.click();document.body.removeChild(a);
+ q('rcMsg').innerHTML='<div class="aviso ok" style="margin-top:10px">Arquivo baixado como recorte-'+nome+'.png</div>';
 };
 
 /* ============ ETAPA 3 — o que eu DESENHO, e não a IA ============
