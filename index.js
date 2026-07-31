@@ -292,6 +292,103 @@ async function handleAnalisar(request, env) {
   return json({ diagnostico: diag, prompt: novo });
 }
 
+const TOM_DONA_BEGO = "Voce escreve roteiro de video curto de e-commerce no tom da Dona Bego. O tom da Dona Bego e: conversa de lojista brasileira de verdade, direta, calorosa e honesta. Frase curta. Palavra simples. Nada de publicidade exagerada, nada de superlativo vazio, nada de gria de marketing. Nunca prometa o que a ficha nao garante. Nunca invente medida, material, quantidade, garantia, preco ou selo. Fale do problema real de quem compra e de como o produto resolve. Escreva em portugues do Brasil. ";
+const REGRA_SO_JSON = "Responda SOMENTE com um objeto JSON valido, sem markdown, sem crase, sem comentario e sem nenhuma palavra antes ou depois. ";
+function soJson(txt) {
+  let t = String(txt || "").trim();
+  if (t.indexOf("```") >= 0) { t = t.replace(/```[a-zA-Z]*/g, "").replace(/```/g, "").trim(); }
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a >= 0 && b > a) t = t.slice(a, b + 1);
+  try { return JSON.parse(t); } catch (e) { return null; }
+}
+
+async function claudeTexto(env, sys, user, maxTok) {
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({
+      model: env.MODEL || "claude-3-5-sonnet-latest",
+      max_tokens: maxTok || 2500,
+      system: sys,
+      messages: [{ role: "user", content: [{ type: "text", text: user }] }]
+    })
+  });
+  if (!r.ok) { const t = await r.text(); return { erro: "Erro da API do Claude (" + r.status + "): " + t.slice(0, 300) }; }
+  const data = await r.json();
+  const txt = (((data.content || [])[0] || {}).text || "").trim();
+  if (!txt) return { erro: "Resposta vazia." };
+  return { texto: txt };
+}
+
+async function handleRoteiro(request, env) {
+  if (!env.ANTHROPIC_API_KEY) return json({ error: "Falta configurar ANTHROPIC_API_KEY." }, 500);
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "JSON invalido." }, 400); }
+
+  const modo = String(body.modo || "roteiro");
+  const ficha = String(body.ficha || "").slice(0, 4000);
+  const escala = String(body.escala || "").slice(0, 1500);
+  const seg = ["4", "8", "12"].indexOf(String(body.seg)) >= 0 ? String(body.seg) : "4";
+  const vertical = body.size !== "1280x720";
+  const pedido = String(body.pedido || "").slice(0, 1200);
+  if (!ficha) return json({ error: "Preencha a ficha do produto antes de pedir o roteiro." }, 400);
+
+  const nCenas = seg === "4" ? 2 : (seg === "8" ? 3 : 5);
+  const formatoTxt = vertical ? "video em pe, 9 por 16, feito para celular" : "video deitado, 16 por 9";
+
+  if (modo === "roteiro") {
+    const sys = TOM_DONA_BEGO
+      + "Voce recebe a ficha real de um produto e devolve o roteiro de um video de " + seg + " segundos, " + formatoTxt + ", com exatamente " + nCenas + " cenas. "
+      + "Cada cena tem: o que a camera mostra, e a legenda que aparece na tela. A legenda de cada cena tem no maximo 7 palavras, porque ela precisa caber e ser lida em poucos segundos. "
+      + "Nao escreva narracao falada: o video sai sem voz, quem conta a historia e a imagem mais a legenda. "
+      + "A soma dos tempos das cenas tem que dar exatamente " + seg + " segundos. "
+      + REGRA_SO_JSON
+      + 'Formato exato: {"titulo":"","gancho":"","cenas":[{"n":1,"tempo":"0-2 s","camera":"","legenda":""}],"cta":"","aviso":""}. '
+      + 'Em aviso escreva, em uma frase, qualquer coisa da ficha que voce PRECISOU deixar de fora ou que ficou em duvida. Se nao houver nada, deixe a string vazia.';
+    let u = "FICHA REAL DO PRODUTO:\n" + ficha + "\n\n";
+    if (escala) u += "CONTRATO DE MEDIDAS (proporcao real, tem que ser respeitada na imagem):\n" + escala + "\n\n";
+    if (pedido) u += "O QUE A LOJISTA PEDIU PARA ESTE VIDEO:\n" + pedido + "\n\n";
+    u += "Monte o roteiro.";
+    const rr = await claudeTexto(env, sys, u, 2000);
+    if (rr.erro) return json({ error: rr.erro }, 502);
+    const obj = soJson(rr.texto);
+    if (!obj || !obj.cenas || !obj.cenas.length) return json({ error: "Nao consegui ler o roteiro que voltou. Tente de novo." }, 502);
+    return json({ roteiro: obj });
+  }
+
+  if (modo === "cenas") {
+    let rot = body.roteiro;
+    if (typeof rot === "string") rot = soJson(rot);
+    if (!rot || !rot.cenas) return json({ error: "Aprove o roteiro antes de montar as cenas." }, 400);
+    const sys = TOM_DONA_BEGO
+      + "Agora voce e diretor de arte. Voce recebe a ficha real, o contrato de medidas e o roteiro JA APROVADO pela lojista. "
+      + "Voce devolve dois prompts de geracao por IA, escritos em portugues, longos, concretos e sem markdown. "
+      + "PROMPT 1, quadro-chave: uma unica imagem fotografica que serve de primeiro quadro e de referencia visual do video inteiro, no formato " + (vertical ? "vertical 9 por 16" : "horizontal 16 por 9") + ". "
+      + "Descreva produto, quantidade exata de pecas, cor, material, fundo, luz, angulo e enquadramento. "
+      + "Escreva a proporcao entre as pecas por extenso dentro do prompt, usando as medidas reais do contrato de medidas, porque o gerador de imagem erra tamanho quando nao le a proporcao escrita. "
+      + "Proiba explicitamente: texto, numero, letra, rotulo escrito, marca de terceiro, selo, marca dagua, mao ou dedo deformado, peca a mais ou a menos. "
+      + "PROMPT 2, video: descreva o movimento continuo de " + seg + " segundos que percorre as " + rot.cenas.length + " cenas do roteiro aprovado, comecando exatamente na imagem do quadro-chave. "
+      + "Descreva movimento de camera lento e realista, o que entra e sai de quadro e em que segundo. Sem corte brusco. Sem voz. Sem musica descrita. "
+      + "Repita no prompt 2 a mesma quantidade de pecas e a mesma proporcao escrita por extenso. Proiba texto e numero na imagem tambem aqui, porque a legenda entra depois por fora. "
+      + REGRA_SO_JSON
+      + 'Formato exato: {"quadro":"","video":"","conferir":["",""]}. '
+      + 'Em conferir liste de 3 a 6 pontos curtos que a lojista deve olhar na imagem antes de gastar com o video.';
+    let u = "FICHA REAL DO PRODUTO:\n" + ficha + "\n\n";
+    if (escala) u += "CONTRATO DE MEDIDAS:\n" + escala + "\n\n";
+    u += "ROTEIRO APROVADO (JSON):\n" + JSON.stringify(rot) + "\n\n";
+    if (pedido) u += "PEDIDO EXTRA DA LOJISTA:\n" + pedido + "\n\n";
+    u += "Monte os dois prompts.";
+    const rr = await claudeTexto(env, sys, u, 3000);
+    if (rr.erro) return json({ error: rr.erro }, 502);
+    const obj = soJson(rr.texto);
+    if (!obj || !obj.quadro || !obj.video) return json({ error: "Nao consegui ler os prompts que voltaram. Tente de novo." }, 502);
+    if (!obj.conferir || !obj.conferir.length) obj.conferir = [];
+    return json({ cenas: obj });
+  }
+
+  return json({ error: "Modo desconhecido." }, 400);
+}
+
 async function handleVideo(request, env) {
   if (!env.OPENAI_API_KEY) {
     return json({ error: "Falta configurar OPENAI_API_KEY no Cloudflare (Settings > Variables and Secrets)." }, 500);
@@ -517,6 +614,9 @@ export default {
     }
     if (url.pathname === "/api/video" && request.method === "POST") {
       return handleVideo(request, env);
+    }
+    if (url.pathname === "/api/roteiro" && request.method === "POST") {
+      return handleRoteiro(request, env);
     }
     if (url.pathname === "/api/fix" && request.method === "POST") {
       return handleFix(request, env);
