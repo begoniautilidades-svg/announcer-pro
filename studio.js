@@ -77,6 +77,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 .custo{font-size:.78rem;color:var(--db-cinza);text-align:center;margin-top:6px}
 .lbl-chk{display:flex;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:.92rem;font-weight:600;color:var(--db-tinta);cursor:pointer;margin:0}
 .lbl-chk input{width:auto;padding:0;margin:0}
+.pago{display:inline-block;background:#FFF6E8;border:1px solid #F0DCC0;color:#8A5A16;font-size:.68rem;font-weight:800;letter-spacing:.08em;padding:3px 8px;border-radius:99px;margin-left:8px;vertical-align:2px}
 .gratis{display:inline-block;background:#F1F7F1;border:1px solid #D6E8D6;color:#2F6B32;font-size:.68rem;font-weight:800;letter-spacing:.08em;padding:3px 8px;border-radius:99px;margin-left:8px;vertical-align:2px}
 </style></head><body>
 <header>
@@ -246,6 +247,61 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
   <div id="qmOut"></div>
  </div>
 
+
+ <div class="card" id="cRot">
+  <h2>6 · Roteiro do vídeo<span class="gratis">CUSTA CENTAVOS</span></h2>
+  <p>Aqui eu escrevo o roteiro no seu tom, usando a ficha real que está lá em cima. Este passo é <strong>só texto</strong>: nenhuma imagem e nenhum vídeo saem daqui, então pode mandar reescrever quantas vezes quiser.</p>
+  <p style="font-size:.86rem">O vídeo sai <strong>sem voz</strong>. Quem conta a história é a imagem mais a legenda curta na tela — por isso cada cena tem no máximo 7 palavras de legenda.</p>
+  <div class="g2">
+   <div class="field"><label>Formato</label>
+    <select id="vFmt"><option value="720x1280">Em pé, 9:16 — feito para celular</option><option value="1280x720">Deitado, 16:9</option></select></div>
+   <div class="field"><label>Duração</label>
+    <select id="vSeg"><option value="4">4 segundos — 2 cenas</option><option value="8">8 segundos — 3 cenas</option><option value="12">12 segundos — 5 cenas</option></select></div>
+  </div>
+  <div class="field"><label>Quer pedir alguma coisa neste vídeo? (opcional)</label>
+   <textarea id="rtPedido" placeholder="Ex: começar mostrando o armário bagunçado e terminar com os potes empilhados e alinhados"></textarea></div>
+  <button class="btn btn-p" id="rtGerar">Escrever o roteiro</button>
+  <div id="rtMsg"></div>
+  <div id="rtOut"></div>
+ </div>
+
+ <div class="card" id="cAp">
+  <h2>7 · Aprovar o roteiro<span class="tag t-gate">PARADA 2</span></h2>
+  <p>Daqui para baixo tudo custa dinheiro de verdade. Enquanto você não aprovar o roteiro, eu não monto cena nenhuma e não gero nada.</p>
+  <p style="font-size:.86rem">Pode editar as legendas ali em cima antes de aprovar: <strong>o que estiver escrito nos campos é o que eu vou usar</strong>, não o que a IA escreveu primeiro.</p>
+  <div id="apMsg"></div>
+  <button class="btn btn-p" id="apOk" disabled>Aprovar este roteiro</button>
+ </div>
+
+ <div class="card" id="cCen">
+  <h2>8 · Cenas e prompts<span class="gratis">CUSTA CENTAVOS</span></h2>
+  <p>Com o roteiro aprovado eu escrevo dois prompts: o do <strong>quadro-chave</strong>, que é a primeira imagem e vira a referência do vídeo inteiro, e o do <strong>vídeo</strong>, que descreve o movimento.</p>
+  <p style="font-size:.86rem">Nos dois eu escrevo a <strong>proporção por extenso</strong>, com as suas medidas reais. O gerador erra tamanho quando não lê a proporção escrita — é o mesmo motivo do contrato de medidas lá em cima.</p>
+  <div id="cnMsg"></div>
+  <button class="btn btn-p" id="cnGerar" disabled>Montar as cenas e os prompts</button>
+  <div id="cnOut"></div>
+ </div>
+
+ <div class="card" id="cQk">
+  <h2>9 · Quadro-chave<span class="tag t-gate">PARADA 3</span><span class="pago">CUSTA UMA IMAGEM</span></h2>
+  <p>Uma imagem barata antes do vídeo caro. É de propósito: se o quadro-chave sair com pote a mais, cor errada ou tamanho fora de proporção, o vídeo sairia errado junto — e o vídeo custa mais de vinte vezes o preço desta imagem.</p>
+  <p style="font-size:.86rem">Olhe com calma antes de aprovar. Conte as peças. Confira a proporção. Refazer aqui é barato.</p>
+  <div id="qkMsg"></div>
+  <button class="btn btn-p" id="qkGerar" disabled>Gerar o quadro-chave</button>
+  <div class="custo" id="qkCusto"></div>
+  <div id="qkOut"></div>
+ </div>
+
+ <div class="card" id="cVd">
+  <h2>10 · Gerar o vídeo<span class="tag t-gate">PARADA 4</span><span class="pago">O PASSO MAIS CARO</span></h2>
+  <p>Só roda com o quadro-chave aprovado como referência — nunca do zero. Leva de <strong>1 a 4 minutos</strong> e custa cerca de <strong>R$ 6,60</strong> a cada 4 segundos.</p>
+  <p style="font-size:.86rem">Não feche a página enquanto ele estiver gerando, e <strong>baixe o arquivo assim que aparecer</strong>: nada fica guardado no servidor.</p>
+  <div id="vdMsg"></div>
+  <button class="btn btn-p" id="vdGerar" disabled>Gerar o vídeo</button>
+  <div class="custo" id="vdCusto"></div>
+  <div id="vdOut"></div>
+ </div>
+
  <div class="card">
   <h2>O caminho até o vídeo</h2>
   <p>Dez passos e quatro paradas obrigatórias. Nas paradas eu não sigo sozinho: eu pergunto e espero você responder.</p>
@@ -255,11 +311,11 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
    <li class="feito"><strong>Ficha do produto</strong> — fotos reais e dados do SKU<span class="tag t-agora">no ar</span></li>
    <li class="feito"><strong>Conferir as fotos</strong> — capa, detalhe, diferencial, uso, escala, o que vem na caixa<span class="tag t-gate">parada 1</span></li>
    <li class="feito"><strong>Quadro de medidas</strong> — desenhado na escala real, sem IA e sem custo<span class="tag t-agora">no ar</span></li>
-   <li><strong>Roteiro</strong> do vídeo, no tom da Dona Begô<span class="tag t-prox">etapa 3</span></li>
-   <li><strong>Aprovar o roteiro</strong> antes de virar cena<span class="tag t-gate">parada 2</span></li>
-   <li><strong>Cenas e prompts</strong> com a proporção escrita dentro<span class="tag t-prox">etapa 3</span></li>
-   <li><strong>Quadro-chave</strong> — uma imagem de ~R$ 0,20 antes do vídeo de ~R$ 6,60<span class="tag t-gate">parada 3</span></li>
-   <li><strong>Gerar o vídeo</strong> só com o quadro aprovado como referência<span class="tag t-gate">parada 4</span></li>
+   <li class="feito"><strong>Roteiro</strong> do vídeo, no tom da Dona Begô<span class="tag t-agora">no ar</span></li>
+   <li class="feito"><strong>Aprovar o roteiro</strong> antes de virar cena<span class="tag t-gate">parada 2</span></li>
+   <li class="feito"><strong>Cenas e prompts</strong> com a proporção escrita dentro<span class="tag t-agora">no ar</span></li>
+   <li class="feito"><strong>Quadro-chave</strong> — uma imagem de ~R$ 0,25 antes do vídeo de ~R$ 6,60<span class="tag t-gate">parada 3</span></li>
+   <li class="feito"><strong>Gerar o vídeo</strong> só com o quadro aprovado como referência<span class="tag t-gate">parada 4</span></li>
    <li><strong>Arquivar</strong> na pasta do SKU<span class="tag t-prox">etapa 6</span></li>
   </ol>
  </div>
@@ -1270,4 +1326,201 @@ q('escCopy').onclick=function(){
  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,fallback)}else{fallback()}
  function fallback(){var a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(a);done()}
 };
+/* ====== passos 6 a 10: roteiro, aprovação, cenas, quadro-chave e vídeo ======
+   Quatro travas em série. Nada aqui roda sozinho e nada pago roda sem um
+   confirm com o preço escrito na tela. O roteiro e as cenas são texto, custam
+   centavos. O quadro-chave é uma imagem. O vídeo só sai com o quadro aprovado
+   como referência — nunca do zero. */
+var ROTEIRO=null,ROT_OK=false,CENAS=null,QK_B64=null,QK_OK=false;
+
+function travar(){
+ var ap=q('apOk');
+ ap.disabled=(!ROTEIRO)||ROT_OK;
+ ap.textContent=ROT_OK?'Roteiro aprovado':'Aprovar este roteiro';
+ q('cnGerar').disabled=!ROT_OK;
+ q('qkGerar').disabled=!CENAS;
+ q('vdGerar').disabled=!(QK_OK&&QK_B64);
+ q('apMsg').innerHTML=ROT_OK
+  ?'<div class="aviso ok">Roteiro aprovado. Pode montar as cenas no passo 8.</div>'
+  :(ROTEIRO
+   ?'<div class="aviso">O roteiro está escrito aí em cima. Leia, ajuste as legendas se quiser, e só então aprove.</div>'
+   :'<div class="aviso">Trancado. Primeiro escreva o roteiro no passo 6.</div>');
+ q('cnMsg').innerHTML=ROT_OK?'':'<div class="aviso">Trancado. Aprove o roteiro no passo 7 primeiro.</div>';
+ q('qkMsg').innerHTML=CENAS?'':'<div class="aviso">Trancado. Monte as cenas e os prompts no passo 8 primeiro.</div>';
+ q('vdMsg').innerHTML=(QK_OK&&QK_B64)
+  ?'<div class="aviso ok">Quadro-chave aprovado. O vídeo vai usar exatamente essa imagem como referência.</div>'
+  :'<div class="aviso">Trancado. O vídeo só roda depois que você aprovar o quadro-chave no passo 9.</div>';
+}
+
+function limparDaqui(nivel){
+ if(nivel<=1){ROT_OK=false}
+ if(nivel<=2){CENAS=null;q('cnOut').innerHTML=''}
+ if(nivel<=3){QK_B64=null;QK_OK=false;q('qkOut').innerHTML=''}
+ q('vdOut').innerHTML='';
+ travar();
+}
+
+function desenharRoteiro(){
+ var R=ROTEIRO;
+ if(!R||!R.cenas){q('rtOut').innerHTML='';return}
+ var h='<div class="aviso ok" style="margin-top:14px"><strong>'+esc(R.titulo||'Roteiro')+'</strong>';
+ if(R.gancho)h+='<br>'+esc(R.gancho);
+ h+='</div>';
+ for(var i=0;i<R.cenas.length;i++){
+  var c=R.cenas[i]||{};
+  h+='<div class="foto" style="margin-top:12px"><h3>Cena '+(i+1)+' · '+esc(c.tempo||'')+'</h3>'
+   +'<p class="obj">'+esc(c.camera||'')+'</p>'
+   +'<div class="field" style="margin:0"><label>Legenda que aparece na tela</label>'
+   +'<input type="text" id="rl'+i+'" value="'+esc(c.legenda||'').replace(/"/g,'&quot;')+'"></div></div>';
+ }
+ if(R.cta)h+='<div class="saida" style="margin-top:12px"><strong>Chamada final:</strong> '+esc(R.cta)+'</div>';
+ if(R.aviso)h+='<div class="aviso" style="margin-top:10px"><strong>Olha só:</strong> '+esc(R.aviso)+'</div>';
+ q('rtOut').innerHTML=h;
+}
+
+q('rtGerar').onclick=function(){
+ var F=fichaAtual();
+ if(!F.nome||F.nome==='produto'){alert('Preencha o nome do produto na ficha antes de pedir o roteiro.');return}
+ if(ROT_OK&&!confirm('Você já aprovou um roteiro.\n\nEscrever outro derruba essa aprovação e limpa as cenas, o quadro-chave e o vídeo desta tela. Se ainda não baixou o que já saiu, cancele e baixe primeiro.\n\nContinuar?'))return;
+ var b=this;b.disabled=true;b.textContent='Escrevendo...';
+ ROTEIRO=null;limparDaqui(1);
+ q('rtOut').innerHTML='<div class="spin">Escrevendo o roteiro... alguns segundos.</div>';
+ fetch('/api/roteiro',{method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({modo:'roteiro',ficha:fichaTxt(),escala:F.escala,seg:q('vSeg').value,size:q('vFmt').value,pedido:(q('rtPedido').value||'').trim()})})
+ .then(function(r){return r.json()})
+ .then(function(j){
+  b.disabled=false;b.textContent='Escrever o roteiro de novo';
+  if(j.error){q('rtOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';travar();return}
+  if(!j.roteiro||!j.roteiro.cenas){q('rtOut').innerHTML='<div class="erro">A resposta veio sem roteiro. Tente de novo.</div>';travar();return}
+  ROTEIRO=j.roteiro;desenharRoteiro();travar();
+  q('cAp').scrollIntoView({behavior:'smooth',block:'start'});
+ })
+ .catch(function(e){
+  b.disabled=false;b.textContent='Escrever o roteiro';
+  q('rtOut').innerHTML='<div class="erro">Não consegui falar com o escritor de roteiro. '+esc(String(e&&e.message||e))+'</div>';
+  travar();
+ });
+};
+
+q('apOk').onclick=function(){
+ if(!ROTEIRO||!ROTEIRO.cenas)return;
+ for(var i=0;i<ROTEIRO.cenas.length;i++){
+  var e=document.getElementById('rl'+i);
+  if(e)ROTEIRO.cenas[i].legenda=(e.value||'').trim();
+ }
+ ROT_OK=true;travar();
+ q('cCen').scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+q('cnGerar').onclick=function(){
+ if(!ROT_OK){alert('Aprove o roteiro no passo 7 antes.');return}
+ var F=fichaAtual(),b=this;
+ b.disabled=true;b.textContent='Montando...';
+ limparDaqui(2);
+ q('cnOut').innerHTML='<div class="spin">Montando as cenas e escrevendo os dois prompts...</div>';
+ fetch('/api/roteiro',{method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({modo:'cenas',ficha:fichaTxt(),escala:F.escala,seg:q('vSeg').value,size:q('vFmt').value,roteiro:ROTEIRO,pedido:(q('rtPedido').value||'').trim()})})
+ .then(function(r){return r.json()})
+ .then(function(j){
+  b.disabled=false;b.textContent='Montar de novo as cenas e os prompts';
+  if(j.error){q('cnOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';travar();return}
+  if(!j.cenas||!j.cenas.quadro||!j.cenas.video){q('cnOut').innerHTML='<div class="erro">A resposta veio incompleta. Tente de novo.</div>';travar();return}
+  CENAS=j.cenas;
+  var h='<div class="field" style="margin-top:14px"><label>Prompt do quadro-chave — a imagem do passo 9</label>'
+   +'<textarea id="cnQ" style="min-height:150px">'+esc(CENAS.quadro)+'</textarea></div>'
+   +'<div class="field"><label>Prompt do vídeo — o movimento do passo 10</label>'
+   +'<textarea id="cnV" style="min-height:150px">'+esc(CENAS.video)+'</textarea></div>';
+  if(CENAS.conferir&&CENAS.conferir.length){
+   h+='<div class="aviso"><strong>Antes de gastar, confira isto na imagem:</strong><br>';
+   for(var i=0;i<CENAS.conferir.length;i++)h+='· '+esc(CENAS.conferir[i])+'<br>';
+   h+='</div>';
+  }
+  h+='<div class="custo">Pode editar os dois prompts aqui. O que estiver escrito no campo é o que eu mando gerar.</div>';
+  q('cnOut').innerHTML=h;travar();
+  q('cQk').scrollIntoView({behavior:'smooth',block:'start'});
+ })
+ .catch(function(e){
+  b.disabled=false;b.textContent='Montar as cenas e os prompts';
+  q('cnOut').innerHTML='<div class="erro">Não consegui montar as cenas. '+esc(String(e&&e.message||e))+'</div>';
+  travar();
+ });
+};
+
+function custoQk(){var v=q('fQual').value;return v==='low'?'R$ 0,06':v==='high'?'R$ 1,00':'R$ 0,25'}
+function custoVd(){var s=q('vSeg').value;return s==='8'?'R$ 13,20':s==='12'?'R$ 19,80':'R$ 6,60'}
+function precos(){
+ q('qkCusto').textContent='Custo estimado desta imagem: '+custoQk()+' — pela qualidade escolhida lá em cima.';
+ q('vdCusto').textContent='Custo estimado deste vídeo: cerca de '+custoVd()+'.';
+}
+q('vSeg').onchange=precos;
+
+q('qkGerar').onclick=function(){
+ if(!CENAS){alert('Monte as cenas no passo 8 antes.');return}
+ var cq=document.getElementById('cnQ');
+ var p=((cq&&cq.value)||CENAS.quadro||'').trim();
+ if(!p){alert('O prompt do quadro-chave está vazio.');return}
+ if(!confirm('Gerar o quadro-chave agora?\n\nCusto estimado desta imagem: '+custoQk()+'\n\nÉ a imagem barata que vem antes do vídeo caro. Se não gostar, você manda refazer.'))return;
+ var b=this;b.disabled=true;b.textContent='Gerando...';
+ limparDaqui(3);
+ q('qkOut').innerHTML='<div class="spin">Gerando o quadro-chave... isso leva de 20 a 60 segundos.</div>';
+ fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({prompt:p,quality:q('fQual').value,size:(q('vFmt').value==='1280x720'?'1536x1024':'1024x1536'),imagens:FOTOS_REAIS})})
+ .then(function(r){return r.json()})
+ .then(function(j){
+  b.disabled=false;b.textContent='Gerar de novo o quadro-chave';
+  if(j.error){q('qkOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';travar();return}
+  if(!j.image){q('qkOut').innerHTML='<div class="erro">A resposta veio sem imagem. Tente de novo.</div>';travar();return}
+  QK_B64=j.image;
+  var u='data:image/png;base64,'+j.image;
+  q('qkOut').innerHTML='<img class="imgout" id="qkImg" src="'+u+'">'
+   +'<div class="g2" style="margin-top:10px">'
+   +'<button class="btn btn-g" id="qkDl">Baixar o quadro-chave</button>'
+   +'<button class="btn btn-p" id="qkOkB">Está bom, aprovar para o vídeo</button></div>'
+   +'<div class="custo">Conte as peças e confira a proporção antes de aprovar. Depois daqui o próximo clique custa '+custoVd()+'.</div>';
+  q('qkDl').onclick=function(){salvar(u,(fichaAtual().sku||'produto')+'-quadro-chave.png')};
+  q('qkOkB').onclick=function(){
+   QK_OK=true;travar();
+   this.disabled=true;this.textContent='Quadro aprovado';
+   q('cQk').classList.add('aprovada');
+   q('cVd').scrollIntoView({behavior:'smooth',block:'start'});
+  };
+  travar();
+ })
+ .catch(function(e){
+  b.disabled=false;b.textContent='Gerar o quadro-chave';
+  q('qkOut').innerHTML='<div class="erro">Não consegui falar com o gerador de imagem. '+esc(String(e&&e.message||e))+'</div>';
+  travar();
+ });
+};
+
+q('vdGerar').onclick=function(){
+ if(!QK_OK||!QK_B64){alert('Aprove o quadro-chave no passo 9 antes.');return}
+ var cv=document.getElementById('cnV');
+ var p=((cv&&cv.value)||(CENAS&&CENAS.video)||'').trim();
+ if(!p){alert('O prompt do vídeo está vazio.');return}
+ var s=q('vSeg').value;
+ if(!confirm('Gerar o vídeo de '+s+' segundos agora?\n\nCusto estimado: cerca de '+custoVd()+'.\n\nEste é o passo mais caro do caminho. O vídeo vai usar o quadro-chave que você aprovou como referência.\n\nNão feche a página enquanto ele gera.'))return;
+ var b=this;b.disabled=true;b.textContent='Gerando o vídeo...';
+ q('vdOut').innerHTML='<div class="spin">Gerando o vídeo... isso leva de 1 a 4 minutos. Não feche a página.</div>';
+ fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({prompt:p,seconds:s,size:q('vFmt').value,imageBase64:QK_B64,mediaType:'image/png'})})
+ .then(function(r){return r.json()})
+ .then(function(j){
+  b.disabled=false;b.textContent='Gerar o vídeo de novo';
+  if(j.error){q('vdOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';return}
+  if(!j.video){q('vdOut').innerHTML='<div class="erro">A resposta veio sem vídeo. Tente de novo.</div>';return}
+  var u='data:video/mp4;base64,'+j.video;
+  q('vdOut').innerHTML='<video class="imgout" id="vdPlay" controls playsinline src="'+u+'"></video>'
+   +'<button class="btn btn-p" id="vdDl" style="margin-top:10px;width:100%">Baixar o vídeo</button>'
+   +'<div class="aviso" style="margin-top:10px"><strong>Baixe agora.</strong> O vídeo não fica guardado em lugar nenhum. Se fechar a página sem baixar, ele se perde e refazer custa o mesmo de novo.</div>';
+  q('vdDl').onclick=function(){salvar(u,(fichaAtual().sku||'produto')+'-video.mp4')};
+ })
+ .catch(function(e){
+  b.disabled=false;b.textContent='Gerar o vídeo';
+  q('vdOut').innerHTML='<div class="erro">Não consegui falar com o gerador de vídeo. '+esc(String(e&&e.message||e))+'</div>';
+ });
+};
+
+precos();
+travar();
 </script></body></html>`;
