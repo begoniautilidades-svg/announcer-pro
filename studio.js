@@ -261,7 +261,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
    <div class="field"><label>Formato</label>
     <select id="vFmt"><option value="720x1280">Em pé, 9:16 — feito para celular</option><option value="1280x720">Deitado, 16:9</option></select></div>
    <div class="field"><label>Duração</label>
-    <select id="vSeg"><option value="4">4 segundos — 2 cenas — R$ 6,60</option><option value="8">8 segundos — 3 cenas — R$ 13,20</option><option value="12">12 segundos — 5 cenas — R$ 19,80</option><option value="24" selected>24 segundos — 8 cenas — R$ 39,60 (dois clipes emendados)</option></select></div>
+    <select id="vSeg"><option value="4">4 segundos — 2 cenas — R$ 2,10</option><option value="8">8 segundos — 3 cenas — R$ 4,10</option><option value="12">12 segundos — 5 cenas — R$ 6,20</option><option value="24" selected>24 segundos — 8 cenas — R$ 12,40 (dois clipes emendados)</option></select></div>
   </div>
   <div class="field"><label>Quer pedir alguma coisa neste vídeo? (opcional)</label>
    <textarea id="rtPedido" placeholder="Ex: começar mostrando o armário bagunçado e terminar com os potes empilhados e alinhados"></textarea></div>
@@ -299,7 +299,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 
  <div class="card" id="cVd">
   <h2>10 · Gerar o vídeo<span class="tag t-gate">PARADA 4</span><span class="pago">O PASSO MAIS CARO</span></h2>
-  <p>Só roda com o quadro-chave aprovado como referência — nunca do zero. Leva de <strong>1 a 4 minutos</strong> e custa cerca de <strong>R$ 6,60</strong> a cada 4 segundos.</p>
+  <p>Só roda com o quadro-chave aprovado como referência — nunca do zero. Leva de <strong>1 a 4 minutos</strong> e custa cerca de <strong>R$ 2,10</strong> a cada 4 segundos. Os valores desta página são <strong>estimativa</strong>: quem cobra é a OpenAI, em dólar (US$ 0,10 por segundo de vídeo), então se o dólar subir o valor em real sobe junto.</p>
   <p style="font-size:.86rem">Depois que você manda gerar, <strong>o pedido fica guardado no seu navegador</strong>. Se a página cair, se o celular dormir ou se você fechar sem querer, dá para voltar aqui e buscar o vídeo que já foi pago, em vez de pagar de novo. Mesmo assim: <strong>baixe o arquivo assim que ele aparecer</strong>, porque no servidor ele não fica guardado para sempre.</p>
   <div id="vdResgate"></div>
   <div id="vdMsg"></div>
@@ -320,7 +320,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
    <li class="feito"><strong>Roteiro</strong> do vídeo, no tom da Dona Begô<span class="tag t-agora">no ar</span></li>
    <li class="feito"><strong>Aprovar o roteiro</strong> antes de virar cena<span class="tag t-gate">parada 2</span></li>
    <li class="feito"><strong>Cenas e prompts</strong> com a proporção escrita dentro<span class="tag t-agora">no ar</span></li>
-   <li class="feito"><strong>Quadro-chave</strong> — uma imagem de ~R$ 0,25 antes do vídeo de ~R$ 6,60<span class="tag t-gate">parada 3</span></li>
+   <li class="feito"><strong>Quadro-chave</strong> — uma imagem de ~R$ 0,25 antes do vídeo de ~R$ 2,10<span class="tag t-gate">parada 3</span></li>
    <li class="feito"><strong>Gerar o vídeo</strong> só com o quadro aprovado como referência<span class="tag t-gate">parada 4</span></li>
    <li><strong>Arquivar</strong> na pasta do SKU<span class="tag t-prox">etapa 6</span></li>
   </ol>
@@ -1648,12 +1648,12 @@ q('cnGerar').onclick=function(){
 };
 
 function custoQk(){var v=q('fQual').value;return v==='low'?'R$ 0,06':v==='high'?'R$ 1,00':'R$ 0,25'}
-function custoVd(){var s=q('vSeg').value;return s==='8'?'R$ 13,20':s==='12'?'R$ 19,80':s==='24'?'R$ 39,60':'R$ 6,60'}
+function custoVd(){var s=q('vSeg').value;return s==='8'?'R$ 4,10':s==='12'?'R$ 6,20':s==='24'?'R$ 12,40':'R$ 2,10'}
 function vdDois(){return q('vSeg').value==='24'}
 function precos(){
  q('qkCusto').textContent='Custo estimado desta imagem: '+custoQk()+' — pela qualidade escolhida lá em cima.';
  q('vdCusto').textContent=vdDois()
-  ? 'Custo estimado deste vídeo: cerca de R$ 39,60 no total — são dois clipes de 12 segundos, R$ 19,80 cada, que eu emendo depois de graça. Você confirma o preço uma vez só.'
+  ? 'Custo estimado deste vídeo: cerca de R$ 12,40 no total — são dois clipes de 12 segundos, R$ 6,20 cada, que eu emendo depois de graça. Você confirma o preço uma vez só.'
   : 'Custo estimado deste vídeo: cerca de '+custoVd()+'.';
 }
 /* trocar a duracao muda o numero de cenas E se o video sai em um ou dois
@@ -1745,7 +1745,7 @@ function vdMostrarResgate(){
  try{quando=new Date(d.quando).toLocaleString('pt-BR')}catch(e){}
  var dois=d.total===2;
  var txt='<strong>Tem vídeo pendente aqui.</strong> Você mandou gerar'+(quando?' em '+esc(quando):'')+' e a página não chegou a entregar o arquivo baixado. ';
- if(dois&&!d.id2)txt+='O <strong>clipe 1 já foi pago</strong> e volta de graça. O clipe 2 ainda não foi encomendado — se você mandar continuar, só ele custa cerca de R$ 19,80.';
+ if(dois&&!d.id2)txt+='O <strong>clipe 1 já foi pago</strong> e volta de graça. O clipe 2 ainda não foi encomendado — se você mandar continuar, só ele custa cerca de R$ 6,20.';
  else if(dois)txt+='Os <strong>dois clipes já foram pagos</strong> e voltam de graça.';
  else txt+='Ele <strong>já foi pago</strong> e volta de graça.';
  box.innerHTML='<div class="aviso">'+txt+'</div>'
@@ -2122,7 +2122,7 @@ q('vdGerar').onclick=function(){
  if(pend&&pend.id1&&!confirm('Atenção: já existe um vídeo pendente aqui, que você mandou gerar antes e ainda não baixou.\n\nSe continuar, esse pedido antigo é descartado e o novo custa cheio.\n\nQuer mesmo gerar um vídeo novo?'))return;
 
  var aviso=dois
-  ? ('Gerar o vídeo de 24 segundos agora?\n\nCusto estimado do total: cerca de R$ 39,60.\nSão dois clipes de 12 segundos, R$ 19,80 cada, e eu emendo os dois de graça no fim.\n\nEsta é a única confirmação: daqui até os arquivos na tela eu não pergunto mais nada, e leva de 3 a 8 minutos.\n\nO clipe 1 começa no quadro-chave que você aprovou. O clipe 2 começa no último quadro do clipe 1, para a emenda não aparecer.\n\nSe a página cair no meio, dá para buscar o que já foi pago sem pagar outra vez.')
+  ? ('Gerar o vídeo de 24 segundos agora?\n\nCusto estimado do total: cerca de R$ 12,40.\nSão dois clipes de 12 segundos, R$ 6,20 cada, e eu emendo os dois de graça no fim.\n\nEsta é a única confirmação: daqui até os arquivos na tela eu não pergunto mais nada, e leva de 3 a 8 minutos.\n\nO clipe 1 começa no quadro-chave que você aprovou. O clipe 2 começa no último quadro do clipe 1, para a emenda não aparecer.\n\nSe a página cair no meio, dá para buscar o que já foi pago sem pagar outra vez.')
   : ('Gerar o vídeo de '+q('vSeg').value+' segundos agora?\n\nCusto estimado: cerca de '+custoVd()+'.\n\nEste é o passo mais caro do caminho. O vídeo vai usar o quadro-chave que você aprovou como referência.\n\nSe a página cair no meio, dá para buscar o vídeo de volta sem pagar outra vez.');
  if(!confirm(aviso))return;
 
