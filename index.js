@@ -328,13 +328,19 @@ async function handleRoteiro(request, env) {
   const modo = String(body.modo || "roteiro");
   const ficha = String(body.ficha || "").slice(0, 4000);
   const escala = String(body.escala || "").slice(0, 1500);
-  const seg = ["4", "8", "12"].indexOf(String(body.seg)) >= 0 ? String(body.seg) : "4";
+  const seg = ["4", "8", "12", "24"].indexOf(String(body.seg)) >= 0 ? String(body.seg) : "4";
   const vertical = body.size !== "1280x720";
   const pedido = String(body.pedido || "").slice(0, 1200);
   if (!ficha) return json({ error: "Preencha a ficha do produto antes de pedir o roteiro." }, 400);
 
-  const nCenas = seg === "4" ? 2 : (seg === "8" ? 3 : 5);
+  const nCenas = seg === "4" ? 2 : (seg === "8" ? 3 : (seg === "12" ? 5 : 8));
   const formatoTxt = vertical ? "video em pe, 9 por 16, feito para celular" : "video deitado, 16 por 9";
+  /* modo 24 s: o gerador so sabe fazer 4, 8 ou 12 segundos. Entao 24 s sai
+     como DOIS clipes de 12 s, e o segundo comeca exatamente no ultimo quadro
+     do primeiro. O roteiro tem que ser escrito ja sabendo disso, senao a
+     emenda fica visivel. */
+  const doisClipes = seg === "24";
+  const metade = Math.round(nCenas / 2);
 
   if (modo === "roteiro") {
     const sys = TOM_DONA_BEGO
@@ -342,6 +348,12 @@ async function handleRoteiro(request, env) {
       + "Cada cena tem: o que a camera mostra, e a legenda que aparece na tela. A legenda de cada cena tem no maximo 7 palavras, porque ela precisa caber e ser lida em poucos segundos. "
       + "Nao escreva narracao falada: o video sai sem voz, quem conta a historia e a imagem mais a legenda. "
       + "A soma dos tempos das cenas tem que dar exatamente " + seg + " segundos. "
+      + (doisClipes
+        ? "ATENCAO, ESTE VIDEO SAI EM DOIS CLIPES DE 12 SEGUNDOS QUE DEPOIS SAO EMENDADOS EM UM ARQUIVO SO. "
+          + "As cenas 1 a " + metade + " formam o primeiro clipe (0 a 12 s) e as cenas " + (metade + 1) + " a " + nCenas + " formam o segundo (12 a 24 s). "
+          + "A cena " + metade + " tem que terminar em um quadro parado e limpo, com o produto inteiro visivel e a camera quase parada, porque esse quadro exato vira o primeiro quadro do segundo clipe. "
+          + "A cena " + (metade + 1) + " tem que comecar nesse mesmo quadro e so entao seguir o movimento. Se a emenda for num movimento rapido, ela aparece e estraga o video. "
+        : "")
       + REGRA_SO_JSON
       + 'Formato exato: {"titulo":"","gancho":"","cenas":[{"n":1,"tempo":"0-2 s","camera":"","legenda":""}],"cta":"","aviso":""}. '
       + 'Em aviso escreva, em uma frase, qualquer coisa da ficha que voce PRECISOU deixar de fora ou que ficou em duvida. Se nao houver nada, deixe a string vazia.';
@@ -367,11 +379,19 @@ async function handleRoteiro(request, env) {
       + "Descreva produto, quantidade exata de pecas, cor, material, fundo, luz, angulo e enquadramento. "
       + "Escreva a proporcao entre as pecas por extenso dentro do prompt, usando as medidas reais do contrato de medidas, porque o gerador de imagem erra tamanho quando nao le a proporcao escrita. "
       + "Proiba explicitamente: texto, numero, letra, rotulo escrito, marca de terceiro, selo, marca dagua, mao ou dedo deformado, peca a mais ou a menos. "
-      + "PROMPT 2, video: descreva o movimento continuo de " + seg + " segundos que percorre as " + rot.cenas.length + " cenas do roteiro aprovado, comecando exatamente na imagem do quadro-chave. "
+      + (doisClipes
+        ? "PROMPT 2, video parte 1: descreva o movimento continuo dos PRIMEIROS 12 segundos, comecando exatamente na imagem do quadro-chave e passando pelas cenas 1 a " + metade + " do roteiro. "
+          + "Ele PRECISA terminar com a camera quase parada, o produto inteiro no quadro, luz e fundo estaveis - esse ultimo quadro vira a referencia do proximo clipe. "
+          + "PROMPT 3, video parte 2: descreva os 12 segundos seguintes, das cenas " + (metade + 1) + " a " + rot.cenas.length + ". "
+          + "Ele comeca EXATAMENTE no ultimo quadro da parte 1, entao repita por extenso, no comeco do prompt 3, a descricao desse quadro final (mesmo enquadramento, mesma luz, mesmo fundo, mesmas pecas nas mesmas posicoes) e so depois descreva o movimento novo. "
+          + "Os dois prompts tem que descrever o mesmo cenario, a mesma luz e a mesma paleta, palavra por palavra onde der, senao a emenda entre os dois aparece. "
+        : "PROMPT 2, video: descreva o movimento continuo de " + seg + " segundos que percorre as " + rot.cenas.length + " cenas do roteiro aprovado, comecando exatamente na imagem do quadro-chave. ")
       + "Descreva movimento de camera lento e realista, o que entra e sai de quadro e em que segundo. Sem corte brusco. Sem voz. Sem musica descrita. "
-      + "Repita no prompt 2 a mesma quantidade de pecas e a mesma proporcao escrita por extenso. Proiba texto e numero na imagem tambem aqui, porque a legenda entra depois por fora. "
+      + "Repita em cada prompt de video a mesma quantidade de pecas e a mesma proporcao escrita por extenso. Proiba texto e numero na imagem tambem aqui, porque a legenda entra depois por fora. "
       + REGRA_SO_JSON
-      + 'Formato exato: {"quadro":"","video":"","conferir":["",""]}. '
+      + (doisClipes
+        ? 'Formato exato: {"quadro":"","video":"","video2":"","conferir":["",""]}. '
+        : 'Formato exato: {"quadro":"","video":"","conferir":["",""]}. ')
       + 'Em conferir liste de 3 a 6 pontos curtos que a lojista deve olhar na imagem antes de gastar com o video.';
     let u = "FICHA REAL DO PRODUTO:\n" + ficha + "\n\n";
     if (escala) u += "CONTRATO DE MEDIDAS:\n" + escala + "\n\n";
@@ -382,6 +402,7 @@ async function handleRoteiro(request, env) {
     if (rr.erro) return json({ error: rr.erro }, 502);
     const obj = soJson(rr.texto);
     if (!obj || !obj.quadro || !obj.video) return json({ error: "Nao consegui ler os prompts que voltaram. Tente de novo." }, 502);
+    if (doisClipes && !obj.video2) return json({ error: "O video de 24 segundos precisa de dois prompts e so voltou um. Clique em montar de novo." }, 502);
     if (!obj.conferir || !obj.conferir.length) obj.conferir = [];
     return json({ cenas: obj });
   }
