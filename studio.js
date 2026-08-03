@@ -261,7 +261,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
    <div class="field"><label>Formato</label>
     <select id="vFmt"><option value="720x1280">Em pé, 9:16 — feito para celular</option><option value="1280x720">Deitado, 16:9</option></select></div>
    <div class="field"><label>Duração</label>
-    <select id="vSeg"><option value="4">4 segundos — 2 cenas</option><option value="8">8 segundos — 3 cenas</option><option value="12">12 segundos — 5 cenas</option></select></div>
+    <select id="vSeg"><option value="4">4 segundos — 2 cenas — R$ 6,60</option><option value="8">8 segundos — 3 cenas — R$ 13,20</option><option value="12">12 segundos — 5 cenas — R$ 19,80</option><option value="24" selected>24 segundos — 8 cenas — R$ 39,60 (dois clipes emendados)</option></select></div>
   </div>
   <div class="field"><label>Quer pedir alguma coisa neste vídeo? (opcional)</label>
    <textarea id="rtPedido" placeholder="Ex: começar mostrando o armário bagunçado e terminar com os potes empilhados e alinhados"></textarea></div>
@@ -1620,11 +1620,17 @@ q('cnGerar').onclick=function(){
   b.disabled=false;b.textContent='Montar de novo as cenas e os prompts';
   if(j.error){q('cnOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';travar();return}
   if(!j.cenas||!j.cenas.quadro||!j.cenas.video){q('cnOut').innerHTML='<div class="erro">A resposta veio incompleta. Tente de novo.</div>';travar();return}
+  if(vdDois()&&!j.cenas.video2){q('cnOut').innerHTML='<div class="erro">O vídeo de 24 segundos precisa de dois prompts e só voltou um. Clique em montar de novo.</div>';travar();return}
   CENAS=j.cenas;
   var h='<div class="field" style="margin-top:14px"><label>Prompt do quadro-chave — a imagem do passo 9</label>'
    +'<textarea id="cnQ" style="min-height:150px">'+esc(CENAS.quadro)+'</textarea></div>'
-   +'<div class="field"><label>Prompt do vídeo — o movimento do passo 10</label>'
+   +'<div class="field"><label>'+(vdDois()?'Prompt do clipe 1 — os primeiros 12 segundos':'Prompt do vídeo — o movimento do passo 10')+'</label>'
    +'<textarea id="cnV" style="min-height:150px">'+esc(CENAS.video)+'</textarea></div>';
+  if(vdDois()&&CENAS.video2){
+   h+='<div class="field"><label>Prompt do clipe 2 — os 12 segundos seguintes</label>'
+    +'<textarea id="cnV2" style="min-height:150px">'+esc(CENAS.video2)+'</textarea>'
+    +'<div class="custo">O clipe 2 começa exatamente no último quadro do clipe 1 — eu tiro esse quadro sozinha e mando junto, para a emenda não aparecer.</div></div>';
+  }
   if(CENAS.conferir&&CENAS.conferir.length){
    h+='<div class="aviso"><strong>Antes de gastar, confira isto na imagem:</strong><br>';
    for(var i=0;i<CENAS.conferir.length;i++)h+='· '+esc(CENAS.conferir[i])+'<br>';
@@ -1642,12 +1648,25 @@ q('cnGerar').onclick=function(){
 };
 
 function custoQk(){var v=q('fQual').value;return v==='low'?'R$ 0,06':v==='high'?'R$ 1,00':'R$ 0,25'}
-function custoVd(){var s=q('vSeg').value;return s==='8'?'R$ 13,20':s==='12'?'R$ 19,80':'R$ 6,60'}
+function custoVd(){var s=q('vSeg').value;return s==='8'?'R$ 13,20':s==='12'?'R$ 19,80':s==='24'?'R$ 39,60':'R$ 6,60'}
+function vdDois(){return q('vSeg').value==='24'}
 function precos(){
  q('qkCusto').textContent='Custo estimado desta imagem: '+custoQk()+' — pela qualidade escolhida lá em cima.';
- q('vdCusto').textContent='Custo estimado deste vídeo: cerca de '+custoVd()+'.';
+ q('vdCusto').textContent=vdDois()
+  ? 'Custo estimado deste vídeo: cerca de R$ 39,60 no total — são dois clipes de 12 segundos, R$ 19,80 cada, que eu emendo depois de graça. Você confirma o preço uma vez só.'
+  : 'Custo estimado deste vídeo: cerca de '+custoVd()+'.';
 }
-q('vSeg').onchange=precos;
+/* trocar a duracao muda o numero de cenas E se o video sai em um ou dois
+   clipes. Um roteiro aprovado para 12 s nao serve para 24 s. Entao a troca
+   destrava tudo para tras: ela refaz o roteiro (barato) antes de gastar. */
+q('vSeg').onchange=function(){
+ precos();
+ if(ROTEIRO||ROT_OK||CENAS){
+  limparDaqui(1);
+  q('rtOut').innerHTML='<div class="aviso">Você mudou a duração do vídeo, então o roteiro antigo não serve mais: ele tinha outra quantidade de cenas. Clique em <strong>Escrever o roteiro</strong> de novo — esse passo é barato.</div>';
+  ROTEIRO=null;
+ }
+};
 
 q('qkGerar').onclick=function(){
  if(!CENAS){alert('Monte as cenas no passo 8 antes.');return}
@@ -1695,122 +1714,423 @@ q('qkGerar').onclick=function(){
    navegador: se a pagina cair, ela busca o mesmo video de volta sem cobrar
    outra vez. */
 var VD_ESPERANDO=false;
-function vdGuardar(id){
- try{localStorage.setItem('db_studio_video',JSON.stringify({id:id,quando:new Date().toISOString()}))}catch(e){}
+var VD_BLOBS={c1:null,c2:null,junto:null};
+var VD_MODO2=false;
+var VD_URLS={};
+var VD_BAIXOU={};
+
+function vdSalvo(){
+ try{var t=localStorage.getItem('db_studio_video');return t?JSON.parse(t):null}catch(e){return null}
+}
+function vdGuardar(o){
+ var d=vdSalvo()||{};
+ for(var k in o)if(Object.prototype.hasOwnProperty.call(o,k))d[k]=o[k];
+ if(!d.quando)d.quando=new Date().toISOString();
+ try{localStorage.setItem('db_studio_video',JSON.stringify(d))}catch(e){}
 }
 function vdEsquecer(){
  try{localStorage.removeItem('db_studio_video')}catch(e){}
  var r=document.getElementById('vdResgate');if(r)r.innerHTML='';
 }
-function vdSalvo(){
- try{var t=localStorage.getItem('db_studio_video');return t?JSON.parse(t):null}catch(e){return null}
+function vdEtapa(txt){q('vdOut').innerHTML='<div class="spin">'+esc(txt)+'</div>'}
+function vdSoltarUrls(){
+ for(var k in VD_URLS)if(VD_URLS[k]){try{URL.revokeObjectURL(VD_URLS[k])}catch(e){}}
+ VD_URLS={};
 }
+
 function vdMostrarResgate(){
  var d=vdSalvo(),box=q('vdResgate');
- if(!d||!d.id){box.innerHTML='';return}
+ if(!d||!d.id1){box.innerHTML='';return}
  var quando='';
  try{quando=new Date(d.quando).toLocaleString('pt-BR')}catch(e){}
- box.innerHTML='<div class="aviso"><strong>Tem um vídeo pendente aqui.</strong> Você mandou gerar'+(quando?' em '+esc(quando):'')+' e a página não chegou a mostrar o arquivo. Ele já foi pago — dá para buscar sem gastar de novo.</div>'
-  +'<div class="g2" style="margin-bottom:12px"><button class="btn btn-g" id="vdBuscar">Buscar esse vídeo<span class="gratis">NÃO CUSTA NADA</span></button>'
+ var dois=d.total===2;
+ var txt='<strong>Tem vídeo pendente aqui.</strong> Você mandou gerar'+(quando?' em '+esc(quando):'')+' e a página não chegou a entregar o arquivo baixado. ';
+ if(dois&&!d.id2)txt+='O <strong>clipe 1 já foi pago</strong> e volta de graça. O clipe 2 ainda não foi encomendado — se você mandar continuar, só ele custa cerca de R$ 19,80.';
+ else if(dois)txt+='Os <strong>dois clipes já foram pagos</strong> e voltam de graça.';
+ else txt+='Ele <strong>já foi pago</strong> e volta de graça.';
+ box.innerHTML='<div class="aviso">'+txt+'</div>'
+  +'<div class="g2" style="margin-bottom:12px"><button class="btn btn-g" id="vdBuscar">Buscar o que já está pago<span class="gratis">NÃO CUSTA NADA</span></button>'
   +'<button class="btn btn-g" id="vdDescartar">Descartar esse pedido</button></div>';
- q('vdBuscar').onclick=function(){vdAcompanhar(d.id,null)};
+ q('vdBuscar').onclick=function(){
+  var p1='',p2='';
+  var c1=document.getElementById('cnV'),c2=document.getElementById('cnV2');
+  if(c1)p1=(c1.value||'').trim();
+  if(c2)p2=(c2.value||'').trim();
+  if(!p2&&CENAS&&CENAS.video2)p2=CENAS.video2;
+  if(dois&&!d.id2&&!p2){
+   alert('Para terminar o clipe 2 eu preciso do prompt dele, que está no passo 8. Monte as cenas de novo (isso é barato) e depois volte aqui.');
+   return;
+  }
+  vdRodar({dois:dois,seg:dois?'12':(d.seg||q('vSeg').value),p1:p1,p2:p2,id1:d.id1,id2:d.id2||null,btn:null});
+ };
  q('vdDescartar').onclick=function(){
-  if(confirm('Esquecer esse pedido de vídeo?\n\nIsso não apaga nada no gerador — só tira o aviso daqui. Se o vídeo já ficou pronto e você não baixou, ele se perde.'))vdEsquecer();
+  if(confirm('Esquecer esse pedido de vídeo?\n\nIsso não apaga nada no gerador — só tira o aviso daqui. Se o vídeo já ficou pronto e você não baixou, ele se perde e teria que pagar de novo.'))vdEsquecer();
  };
 }
 
-function vdAcompanhar(id,btn){
- if(VD_ESPERANDO)return;
- VD_ESPERANDO=true;
- if(btn){btn.disabled=true;btn.textContent='Gerando o vídeo...'}
- vdGuardar(id);
- var tentativas=0,MAX=90; /* 90 x 5 s = 7 minutos e meio de paciencia */
- var t0=Date.now();
- function passou(){var seg=Math.round((Date.now()-t0)/1000);return seg<60?(seg+' segundos'):(Math.floor(seg/60)+' min '+(seg%60)+' s')}
- function acabou(){VD_ESPERANDO=false;if(btn){btn.disabled=false;btn.textContent='Gerar o vídeo de novo'}}
- function erro(txt){acabou();q('vdOut').innerHTML='<div class="erro">'+esc(txt)+'</div>';vdMostrarResgate()}
- function ver(){
-  tentativas++;
-  if(tentativas>MAX){
-   erro('O vídeo está demorando mais do que o normal. O pedido continua vivo lá no gerador: espere um minuto e clique em "Buscar esse vídeo" aqui em cima. Você não paga de novo por isso.');
-   return;
-  }
-  fetch('/api/video-status?id='+encodeURIComponent(id))
-  .then(lerJson)
-  .then(function(j){
-   if(j.error&&j.status!=='failed'){erro(j.error);return}
-   if(j.status==='failed'){vdEsquecer();erro(j.error||'A geração do vídeo falhou no gerador.');return}
-   if(j.status==='completed'){vdBaixarArquivo(id,btn);return}
-   var pc=(typeof j.progress==='number'&&j.progress>0)?(' — '+Math.round(j.progress)+'% pronto'):'';
-   q('vdOut').innerHTML='<div class="spin">Gerando o vídeo há '+passou()+pc+'. Leva de 1 a 4 minutos. Pode deixar a página aberta.</div>';
-   setTimeout(ver,5000);
-  })
-  .catch(function(e){
-   /* uma falha de rede solta nao pode matar a espera de um video ja pago */
-   if(tentativas>=MAX){erro('Perdi o contato com o gerador. '+String(e&&e.message||e));return}
-   q('vdOut').innerHTML='<div class="spin">Conexão oscilou, tentando de novo... (há '+passou()+')</div>';
-   setTimeout(ver,5000);
-  });
- }
- q('vdOut').innerHTML='<div class="spin">Vídeo encomendado. Acompanhando...</div>';
- ver();
+/* ---- os tres tijolos do caminho: encomendar, esperar, pegar ---- */
+function vdEncomendar(prompt,segundos,b64,mt){
+ return fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},
+  body:JSON.stringify({prompt:prompt,seconds:segundos,size:q('vFmt').value,imageBase64:b64,mediaType:mt||'image/png'})})
+ .then(lerJson)
+ .then(function(j){
+  if(j.error)throw new Error(j.error);
+  if(!j.id)throw new Error('O gerador não devolveu o número do pedido. Tente de novo — nada foi cobrado.');
+  return j.id;
+ });
 }
 
-function vdBaixarArquivo(id,btn){
- q('vdOut').innerHTML='<div class="spin">Vídeo pronto. Trazendo o arquivo...</div>';
- fetch('/api/video-arquivo?id='+encodeURIComponent(id))
+function vdEsperar(id,rotulo){
+ return new Promise(function(ok,ruim){
+  var n=0,MAX=90,t0=Date.now();
+  function passou(){var s=Math.round((Date.now()-t0)/1000);return s<60?(s+' segundos'):(Math.floor(s/60)+' min '+(s%60)+' s')}
+  function ver(){
+   n++;
+   if(n>MAX){ruim(new Error('O gerador está demorando mais do que o normal com '+rotulo+'. O pedido continua vivo lá: espere um minuto e clique em "Buscar o que já está pago" aqui em cima. Isso não cobra de novo.'));return}
+   fetch('/api/video-status?id='+encodeURIComponent(id))
+   .then(lerJson)
+   .then(function(j){
+    if(j.status==='failed'){var e1=new Error(j.error||('A geração d'+rotulo+' falhou no gerador.'));e1.perdido=true;ruim(e1);return}
+    if(j.error){ruim(new Error(j.error));return}
+    if(j.status==='completed'){ok(true);return}
+    var pc=(typeof j.progress==='number'&&j.progress>0)?(' — '+Math.round(j.progress)+'% pronto'):'';
+    vdEtapa('Gerando '+rotulo+' há '+passou()+pc+'. Cada clipe leva de 1 a 4 minutos. Pode deixar a página aberta.');
+    setTimeout(ver,5000);
+   })
+   .catch(function(e){
+    if(n>=MAX){ruim(new Error('Perdi o contato com o gerador. '+String(e&&e.message||e)));return}
+    vdEtapa('A conexão oscilou, tentando de novo... (há '+passou()+')');
+    setTimeout(ver,5000);
+   });
+  }
+  ver();
+ });
+}
+
+function maiuscula(s){return String(s||'').charAt(0).toUpperCase()+String(s||'').slice(1)}
+function vdPegar(id,rotulo){
+ vdEtapa(maiuscula(rotulo)+' ficou pronto. Trazendo o arquivo...');
+ return fetch('/api/video-arquivo?id='+encodeURIComponent(id))
  .then(function(r){
-  if(!r.ok)return r.text().then(function(t){throw new Error('O servidor não entregou o arquivo (código '+r.status+').')});
+  if(!r.ok)return r.text().then(function(){throw new Error('O servidor não entregou o arquivo d'+rotulo+' (código '+r.status+'). Clique em "Buscar o que já está pago" para tentar de novo — isso não cobra nada.')});
   var tipo=r.headers.get('content-type')||'';
   if(tipo.indexOf('json')>=0)return r.json().then(function(j){throw new Error(j.error||'O servidor devolveu um aviso em vez do vídeo.')});
   return r.blob();
- })
- .then(function(bl){
-  VD_ESPERANDO=false;
-  if(btn){btn.disabled=false;btn.textContent='Gerar o vídeo de novo'}
-  var u=URL.createObjectURL(bl);
-  var mb=(bl.size/1048576).toFixed(1).replace('.',',');
-  q('vdOut').innerHTML='<video class="imgout" id="vdPlay" controls playsinline src="'+u+'"></video>'
-   +'<button class="btn btn-p" id="vdDl" style="margin-top:10px;width:100%">Baixar o vídeo ('+mb+' MB)</button>'
-   +'<div class="aviso" style="margin-top:10px"><strong>Baixe agora.</strong> Assista, e se estiver bom baixe antes de fechar a página.</div>';
-  q('vdDl').onclick=function(){
-   salvar(u,(fichaAtual().sku||'produto')+'-video.mp4');
-   vdEsquecer();
-   q('vdOut').insertAdjacentHTML('beforeend','<div class="aviso ok" style="margin-top:10px">Arquivo baixado. Confira na pasta de downloads do aparelho antes de fechar.</div>');
-  };
-  vdMostrarResgate();
- })
- .catch(function(e){
-  VD_ESPERANDO=false;
-  if(btn){btn.disabled=false;btn.textContent='Gerar o vídeo de novo'}
-  q('vdOut').innerHTML='<div class="erro">O vídeo ficou pronto, mas não consegui trazer o arquivo. '+esc(String(e&&e.message||e))+' Clique em <strong>Buscar esse vídeo</strong> aqui em cima para tentar de novo — isso não cobra nada.</div>';
-  vdMostrarResgate();
  });
+}
+
+/* ---- o ultimo quadro do clipe 1 vira a referencia do clipe 2 ----
+   E isso que faz a emenda nao aparecer: o gerador comeca o segundo clipe
+   exatamente na imagem em que o primeiro parou. */
+function vdUltimoQuadro(bl){
+ return new Promise(function(ok,ruim){
+  var v=document.createElement('video');
+  v.muted=true;v.playsInline=true;v.preload='auto';
+  var u=URL.createObjectURL(bl),feito=false;
+  function acaba(fn,arg){if(feito)return;feito=true;clearTimeout(rel);try{URL.revokeObjectURL(u)}catch(e){}fn(arg)}
+  var rel=setTimeout(function(){acaba(ruim,new Error('O navegador demorou demais para abrir o clipe 1 e tirar o último quadro dele.'))},40000);
+  v.onerror=function(){acaba(ruim,new Error('O navegador não conseguiu abrir o clipe 1 para tirar o último quadro.'))};
+  v.onloadedmetadata=function(){
+   var d=v.duration;
+   if(!isFinite(d)||d<=0)d=12;
+   try{v.currentTime=Math.max(0,d-0.08)}catch(e){acaba(ruim,new Error('Não consegui avançar até o fim do clipe 1.'))}
+  };
+  v.onseeked=function(){
+   try{
+    var c=document.createElement('canvas');
+    c.width=v.videoWidth||720;c.height=v.videoHeight||1280;
+    c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+    var du=c.toDataURL('image/png');
+    acaba(ok,{b64:du.split(',')[1],l:c.width,a:c.height});
+   }catch(e){acaba(ruim,new Error('Não consegui copiar o último quadro do clipe 1. '+String(e&&e.message||e)))}
+  };
+  v.src=u;
+ });
+}
+
+/* ---- juntar os dois clipes aqui no aparelho, sem gastar nada ----
+   Nao ha servidor nenhum nisso: o navegador toca o clipe 1 e depois o 2
+   dentro de uma tela escondida e grava o resultado. Por isso a pagina
+   precisa ficar na frente enquanto roda. Se o navegador nao souber gravar,
+   os dois clipes continuam ali para baixar separados. */
+function vdJuntar(bl1,bl2,andar){
+ return new Promise(function(ok,ruim){
+  var MR=window.MediaRecorder;
+  if(!MR){ruim(new Error('Este navegador não sabe juntar vídeo sozinho. Baixe os dois clipes e junte no CapCut ou no InShot — leva um minuto.'));return}
+  var tipos=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  var tipo='';
+  for(var i=0;i<tipos.length;i++){try{if(MR.isTypeSupported(tipos[i])){tipo=tipos[i];break}}catch(e){}}
+  if(!tipo){ruim(new Error('Este navegador não aceita nenhum formato de gravação. Baixe os dois clipes e junte no CapCut ou no InShot.'));return}
+
+  var u1=URL.createObjectURL(bl1),u2=URL.createObjectURL(bl2);
+  var v1=document.createElement('video'),v2=document.createElement('video');
+  var ctx=null,acabou=false;
+  function limpar(){
+   try{URL.revokeObjectURL(u1)}catch(e){}
+   try{URL.revokeObjectURL(u2)}catch(e){}
+   try{if(ctx)ctx.close()}catch(e){}
+  }
+  function morrer(msg){if(acabou)return;acabou=true;limpar();ruim(new Error(msg))}
+  v1.preload='auto';v2.preload='auto';v1.playsInline=true;v2.playsInline=true;
+  v1.onerror=function(){morrer('Não consegui abrir o clipe 1 para juntar.')};
+  v2.onerror=function(){morrer('Não consegui abrir o clipe 2 para juntar.')};
+
+  var prontos=0;
+  function chegou(){prontos++;if(prontos===2)comecar()}
+  v1.onloadedmetadata=chegou;
+  v2.onloadedmetadata=chegou;
+
+  function comecar(){
+   if(acabou)return;
+   var L=Math.max(v1.videoWidth||0,v2.videoWidth||0)||720;
+   var A=Math.max(v1.videoHeight||0,v2.videoHeight||0)||1280;
+   var c=document.createElement('canvas');c.width=L;c.height=A;
+   var g=c.getContext('2d');
+   g.fillStyle='#000';g.fillRect(0,0,L,A);
+
+   var fluxo;
+   try{fluxo=c.captureStream(30)}catch(e){morrer('Este navegador não deixa gravar a tela de montagem.');return}
+
+   try{
+    var AC=window.AudioContext||window.webkitAudioContext;
+    if(AC){
+     ctx=new AC();
+     if(ctx.resume)ctx.resume();
+     var dest=ctx.createMediaStreamDestination();
+     ctx.createMediaElementSource(v1).connect(dest);
+     ctx.createMediaElementSource(v2).connect(dest);
+     var ta=dest.stream.getAudioTracks();
+     for(var k=0;k<ta.length;k++)fluxo.addTrack(ta[k]);
+    }
+   }catch(e){/* sem audio o video ainda sai; nao vale derrubar por isso */}
+
+   var pedacos=[],gr;
+   try{gr=new MR(fluxo,{mimeType:tipo,videoBitsPerSecond:8000000,audioBitsPerSecond:128000})}
+   catch(e){
+    try{gr=new MR(fluxo,{mimeType:tipo})}
+    catch(e2){morrer('O gravador do navegador recusou o formato.');return}
+   }
+   gr.ondataavailable=function(ev){if(ev.data&&ev.data.size)pedacos.push(ev.data)};
+   gr.onerror=function(){morrer('O gravador do navegador parou no meio da junção.')};
+   gr.onstop=function(){
+    if(acabou)return;acabou=true;
+    var saida=new Blob(pedacos,{type:tipo.split(';')[0]});
+    limpar();
+    if(!saida.size){ruim(new Error('A junção saiu vazia. Baixe os dois clipes separados e junte no CapCut.'));return}
+    ok({blob:saida,mp4:tipo.indexOf('mp4')>=0});
+   };
+   try{gr.start(500)}catch(e){morrer('Não consegui ligar o gravador do navegador.');return}
+
+   var atual=null,parar=false;
+   function desenha(){
+    if(parar)return;
+    if(atual&&atual.videoWidth){
+     var vw=atual.videoWidth,vh=atual.videoHeight;
+     var e=Math.min(L/vw,A/vh),dl=vw*e,da=vh*e;
+     g.fillStyle='#000';g.fillRect(0,0,L,A);
+     g.drawImage(atual,(L-dl)/2,(A-da)/2,dl,da);
+    }
+    requestAnimationFrame(desenha);
+   }
+   requestAnimationFrame(desenha);
+
+   function toca(v,aoFim){
+    atual=v;
+    v.onended=function(){aoFim()};
+    var p;
+    try{p=v.play()}catch(e){morrer('O navegador bloqueou a reprodução. Clique uma vez na página e tente de novo.');return}
+    if(p&&p['catch'])p['catch'](function(){morrer('O navegador bloqueou a reprodução. Clique uma vez na página e tente de novo.')});
+   }
+
+   if(andar)andar('Juntando — gravando os primeiros 12 segundos. Deixe esta página na frente.');
+   toca(v1,function(){
+    if(acabou)return;
+    if(andar)andar('Juntando — gravando os 12 segundos seguintes. Falta pouco.');
+    toca(v2,function(){
+     parar=true;
+     setTimeout(function(){try{gr.stop()}catch(e){}},400);
+    });
+   });
+  }
+
+  v1.src=u1;v2.src=u2;
+ });
+}
+
+/* ---- resultado: os arquivos na tela, para conferir e baixar ---- */
+function vdCartao(bl,titulo,ch){
+ if(!bl)return '';
+ var u=URL.createObjectURL(bl);
+ VD_URLS[ch]=u;
+ var mb=(bl.size/1048576).toFixed(1).replace('.',',');
+ return '<div class="field" style="margin-top:12px"><label>'+esc(titulo)+'</label>'
+  +'<video class="imgout" id="vdP_'+ch+'" controls playsinline src="'+u+'"></video>'
+  +'<button class="btn btn-g" id="vdD_'+ch+'" style="margin-top:8px;width:100%">Baixar este arquivo ('+mb+' MB)</button></div>';
+}
+
+function vdTalvezEsquecer(){
+ if(VD_BAIXOU.junto){vdEsquecer();return}
+ if(VD_BLOBS.c2){if(VD_BAIXOU.c1&&VD_BAIXOU.c2)vdEsquecer();return}
+ /* modo de dois clipes com o segundo ainda faltando: guardo o pedido, senao
+    ela perde o direito de terminar o clipe 2 sem pagar o clipe 1 outra vez */
+ if(VD_MODO2)return;
+ if(VD_BAIXOU.c1)vdEsquecer();
+}
+
+function vdLigarBaixar(ch,nome){
+ var b=document.getElementById('vdD_'+ch);
+ if(!b)return;
+ b.onclick=function(){
+  salvar(VD_URLS[ch],nome);
+  VD_BAIXOU[ch]=true;
+  b.textContent='Baixado — confira na pasta de downloads';
+  vdTalvezEsquecer();
+ };
+}
+
+function vdResultado(){
+ var sku=(fichaAtual().sku||'produto');
+ var dois=!!VD_BLOBS.c2;
+ var h='';
+ if(VD_BLOBS.junto){
+  h+='<div class="aviso ok"><strong>Pronto: um arquivo só, com os 24 segundos.</strong> Confira e baixe. Os dois clipes soltos continuam aqui embaixo, caso você prefira montar do seu jeito.</div>'
+   +vdCartao(VD_BLOBS.junto,'Vídeo completo — cerca de 24 segundos','junto');
+ }else if(dois){
+  h+='<div class="aviso ok"><strong>Os dois clipes ficaram prontos.</strong> Confira cada um. Se estiverem bons, clique em juntar para virar um arquivo só de mais ou menos 24 segundos.</div>';
+ }
+ h+=vdCartao(VD_BLOBS.c1,VD_MODO2?'Clipe 1 — os primeiros 12 segundos':'Vídeo','c1');
+ if(dois)h+=vdCartao(VD_BLOBS.c2,'Clipe 2 — os 12 segundos seguintes','c2');
+ if(dois&&!VD_BLOBS.junto){
+  h+='<button class="btn btn-p" id="vdJnt" style="margin-top:12px;width:100%">Juntar os dois num arquivo só<span class="gratis">NÃO CUSTA NADA</span></button>'
+   +'<div class="custo">A junção acontece aqui no seu aparelho e não gasta nada. Leva mais ou menos 30 segundos e a página precisa ficar na frente enquanto roda.</div>'
+   +'<div id="vdJOut"></div>';
+ }
+ h+='<div class="aviso" style="margin-top:10px"><strong>Baixe antes de fechar a página.</strong> O arquivo só existe aqui no navegador: se fechar sem baixar, ele se perde e teria que pagar de novo.</div>';
+ q('vdOut').innerHTML=h;
+
+ vdLigarBaixar('junto',sku+'-video-24s.'+(VD_BLOBS.juntoMp4===false?'webm':'mp4'));
+ vdLigarBaixar('c1',VD_MODO2?(sku+'-clipe1.mp4'):(sku+'-video.mp4'));
+ vdLigarBaixar('c2',sku+'-clipe2.mp4');
+
+ var bj=document.getElementById('vdJnt');
+ if(bj)bj.onclick=function(){
+  var eu=this;eu.disabled=true;eu.textContent='Juntando...';
+  var saida=q('vdJOut');
+  saida.innerHTML='<div class="spin">Preparando a junção...</div>';
+  vdJuntar(VD_BLOBS.c1,VD_BLOBS.c2,function(txt){saida.innerHTML='<div class="spin">'+esc(txt)+'</div>'})
+  .then(function(r){
+   VD_BLOBS.junto=r.blob;VD_BLOBS.juntoMp4=r.mp4;
+   vdSoltarUrls();vdResultado();
+   if(!r.mp4){
+    var av=document.getElementById('vdJOut');
+    if(av)av.innerHTML='<div class="aviso">O arquivo junto saiu em formato <strong>webm</strong>, porque este navegador não grava em mp4. Alguns marketplaces só aceitam mp4 — se der problema no envio, use os dois clipes separados ou converta o webm.</div>';
+   }
+  })
+  ['catch'](function(e){
+   eu.disabled=false;eu.textContent='Tentar juntar de novo';
+   saida.innerHTML='<div class="erro">Não consegui juntar os dois aqui. '+esc(String(e&&e.message||e))+'<br><br>Isso <strong>não perde nada</strong>: os dois clipes estão prontos aqui em cima, é só baixar os dois.</div>';
+  });
+ };
+
+ vdMostrarResgate();
+}
+
+/* ---- o caminho inteiro, de uma confirmacao so ate o arquivo na mao ---- */
+function vdRodar(cfg){
+ if(VD_ESPERANDO)return;
+ VD_ESPERANDO=true;
+ VD_MODO2=!!cfg.dois;
+ var b=cfg.btn;
+ if(b){b.disabled=true;b.textContent='Gerando o vídeo...'}
+ function fim(){VD_ESPERANDO=false;if(b){b.disabled=false;b.textContent='Gerar o vídeo de novo'}}
+ function falhou(e){
+  fim();
+  var msg=String(e&&e.message||e);
+  /* Se o clipe 1 ja chegou, o dinheiro dele NAO pode sumir junto com a falha
+     do clipe 2. Entao: apago so o pedido que morreu, mostro o clipe 1 na tela
+     para ela baixar, e deixo o aviso de erro por cima. */
+  if(e&&e.perdido){
+   if(VD_BLOBS.c1){
+    var d=vdSalvo()||{};
+    delete d.id2;
+    try{localStorage.setItem('db_studio_video',JSON.stringify(d))}catch(e2){}
+   }else{
+    vdEsquecer();
+   }
+  }
+  if(VD_BLOBS.c1){
+   vdSoltarUrls();
+   vdResultado();
+   var cx=q('vdOut');
+   cx.innerHTML='<div class="erro">'+esc(msg)+'<br><br>O <strong>clipe 1 ficou pronto e está aqui embaixo</strong> — baixe ele antes de fechar a página. Só o clipe 2 falhou.</div>'+cx.innerHTML;
+  }else{
+   q('vdOut').innerHTML='<div class="erro">'+esc(msg)+'</div>';
+  }
+  vdMostrarResgate();
+ }
+
+ var r1;
+ if(cfg.id1){
+  vdEtapa(cfg.dois?'Buscando de volta o clipe 1, que já está pago...':'Buscando de volta o vídeo, que já está pago...');
+  r1=Promise.resolve(cfg.id1);
+ }else{
+  vdEtapa(cfg.dois?'Encomendando o clipe 1 de 2...':'Encomendando o vídeo...');
+  r1=vdEncomendar(cfg.p1,cfg.seg,QK_B64,'image/png').then(function(id){
+   vdGuardar({id1:id,total:cfg.dois?2:1,seg:cfg.seg});
+   return id;
+  });
+ }
+
+ r1.then(function(id1){
+  return vdEsperar(id1,cfg.dois?'o clipe 1':'o vídeo').then(function(){
+   return vdPegar(id1,cfg.dois?'o clipe 1':'o vídeo');
+  });
+ })
+ .then(function(bl1){
+  VD_BLOBS.c1=bl1;
+  if(!cfg.dois){fim();vdSoltarUrls();vdResultado();return null}
+  vdEtapa('Clipe 1 na mão. Tirando o último quadro dele, que vai ser o primeiro quadro do clipe 2...');
+  return vdUltimoQuadro(bl1)
+  .then(function(qd){
+   if(cfg.id2){vdEtapa('Buscando de volta o clipe 2, que já está pago...');return cfg.id2}
+   vdEtapa('Encomendando o clipe 2 de 2, começando exatamente onde o clipe 1 parou...');
+   return vdEncomendar(cfg.p2,'12',qd.b64,'image/png').then(function(id){vdGuardar({id2:id});return id});
+  })
+  .then(function(id2){
+   return vdEsperar(id2,'o clipe 2').then(function(){return vdPegar(id2,'o clipe 2')});
+  })
+  .then(function(bl2){
+   VD_BLOBS.c2=bl2;fim();vdSoltarUrls();vdResultado();
+  });
+ })
+ ['catch'](falhou);
 }
 
 q('vdGerar').onclick=function(){
  if(!QK_OK||!QK_B64){alert('Aprove o quadro-chave no passo 9 antes.');return}
+ var dois=vdDois();
  var cv=document.getElementById('cnV');
- var p=((cv&&cv.value)||(CENAS&&CENAS.video)||'').trim();
- if(!p){alert('O prompt do vídeo está vazio.');return}
- var s=q('vSeg').value;
+ var p1=((cv&&cv.value)||(CENAS&&CENAS.video)||'').trim();
+ if(!p1){alert('O prompt do vídeo está vazio.');return}
+ var p2='';
+ if(dois){
+  var cv2=document.getElementById('cnV2');
+  p2=((cv2&&cv2.value)||(CENAS&&CENAS.video2)||'').trim();
+  if(!p2){alert('Falta o prompt do clipe 2. Volte no passo 8 e monte as cenas de novo com 24 segundos escolhido lá em cima.');return}
+ }
  var pend=vdSalvo();
- if(pend&&pend.id&&!confirm('Atenção: já existe um vídeo pendente aqui, que você mandou gerar antes e ainda não baixou.\n\nSe continuar, esse pedido antigo é descartado e o novo custa cheio.\n\nQuer mesmo gerar um vídeo novo?'))return;
- if(!confirm('Gerar o vídeo de '+s+' segundos agora?\n\nCusto estimado: cerca de '+custoVd()+'.\n\nEste é o passo mais caro do caminho. O vídeo vai usar o quadro-chave que você aprovou como referência.\n\nSe a página cair no meio, dá para buscar o vídeo de volta sem pagar outra vez.'))return;
- var b=this;b.disabled=true;b.textContent='Encomendando o vídeo...';
- q('vdOut').innerHTML='<div class="spin">Encomendando o vídeo ao gerador...</div>';
- fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},
-  body:JSON.stringify({prompt:p,seconds:s,size:q('vFmt').value,imageBase64:QK_B64,mediaType:'image/png'})})
- .then(lerJson)
- .then(function(j){
-  if(j.error){b.disabled=false;b.textContent='Gerar o vídeo';q('vdOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';return}
-  if(!j.id){b.disabled=false;b.textContent='Gerar o vídeo';q('vdOut').innerHTML='<div class="erro">O gerador não devolveu o número do pedido. Tente de novo — nada foi cobrado.</div>';return}
-  vdAcompanhar(j.id,b);
- })
- .catch(function(e){
-  b.disabled=false;b.textContent='Gerar o vídeo';
-  q('vdOut').innerHTML='<div class="erro">Não consegui falar com o gerador de vídeo. '+esc(String(e&&e.message||e))+'</div>';
- });
+ if(pend&&pend.id1&&!confirm('Atenção: já existe um vídeo pendente aqui, que você mandou gerar antes e ainda não baixou.\n\nSe continuar, esse pedido antigo é descartado e o novo custa cheio.\n\nQuer mesmo gerar um vídeo novo?'))return;
+
+ var aviso=dois
+  ? ('Gerar o vídeo de 24 segundos agora?\n\nCusto estimado do total: cerca de R$ 39,60.\nSão dois clipes de 12 segundos, R$ 19,80 cada, e eu emendo os dois de graça no fim.\n\nEsta é a única confirmação: daqui até os arquivos na tela eu não pergunto mais nada, e leva de 3 a 8 minutos.\n\nO clipe 1 começa no quadro-chave que você aprovou. O clipe 2 começa no último quadro do clipe 1, para a emenda não aparecer.\n\nSe a página cair no meio, dá para buscar o que já foi pago sem pagar outra vez.')
+  : ('Gerar o vídeo de '+q('vSeg').value+' segundos agora?\n\nCusto estimado: cerca de '+custoVd()+'.\n\nEste é o passo mais caro do caminho. O vídeo vai usar o quadro-chave que você aprovou como referência.\n\nSe a página cair no meio, dá para buscar o vídeo de volta sem pagar outra vez.');
+ if(!confirm(aviso))return;
+
+ vdEsquecer();
+ VD_BLOBS={c1:null,c2:null,junto:null};
+ VD_BAIXOU={};
+ vdSoltarUrls();
+ vdRodar({dois:dois,seg:dois?'12':q('vSeg').value,p1:p1,p2:p2,id1:null,id2:null,btn:this});
 };
 vdMostrarResgate();
 
