@@ -389,6 +389,24 @@ async function handleRoteiro(request, env) {
   return json({ error: "Modo desconhecido." }, 400);
 }
 
+/* ---- video: tres passos curtos em vez de um pedido longo -------------------
+   O motor antigo pedia o video e ficava perguntando ao Sora, de 5 em 5
+   segundos, ate 100 vezes, tudo dentro do MESMO pedido. Cada pergunta dessas
+   conta como uma saida para fora, e o plano permite 50 por pedido. Um video
+   real leva de 1 a 4 minutos: batia no teto e era cortado no meio, com o
+   video ja pago e perdido.
+   Agora sao tres pedidos separados e curtos:
+     POST /api/video         -> so encomenda e devolve o numero do pedido
+     GET  /api/video-status  -> uma pergunta so, quem espera e o navegador
+     GET  /api/video-arquivo -> entrega o arquivo direto, sem converter nada
+   Nenhum deles passa de 2 saidas, e o arquivo nao e mais convertido para
+   texto dentro do servidor: ele passa direto, o que tambem tira o risco de
+   estourar o processamento com um video de 5 a 10 MB. */
+function idLimpo(v) {
+  const t = String(v || "");
+  return /^[A-Za-z0-9_.-]{1,120}$/.test(t) ? t : "";
+}
+
 async function handleVideo(request, env) {
   if (!env.OPENAI_API_KEY) {
     return json({ error: "Falta configurar OPENAI_API_KEY no Cloudflare (Settings > Variables and Secrets)." }, 500);
@@ -407,36 +425,51 @@ async function handleVideo(request, env) {
     fd.append("input_reference", new Blob([bin], { type: body.mediaType }), "referencia.png");
   }
   const auth = { "authorization": "Bearer " + env.OPENAI_API_KEY };
-  let r = await fetch("https://api.openai.com/v1/videos", { method: "POST", headers: auth, body: fd });
+  const r = await fetch("https://api.openai.com/v1/videos", { method: "POST", headers: auth, body: fd });
   if (!r.ok) {
     const t = await r.text();
     return json({ error: erroOpenAI(r.status, t) }, 502);
   }
-  let job = await r.json();
-  for (let i = 0; i < 100; i++) {
-    if (job.status === "completed") break;
-    if (job.status === "failed") {
-      return json({ error: "Geracao do video falhou: " + ((job.error && job.error.message) || "erro desconhecido") }, 502);
-    }
-    await new Promise(function (res) { setTimeout(res, 5000); });
-    r = await fetch("https://api.openai.com/v1/videos/" + job.id, { headers: auth });
-    if (!r.ok) {
-      const t = await r.text();
-      return json({ error: "Erro ao consultar o video (" + r.status + "): " + t.slice(0, 300) }, 502);
-    }
-    job = await r.json();
+  const job = await r.json();
+  if (!job || !job.id) return json({ error: "O gerador aceitou o pedido mas nao devolveu o numero dele. Tente de novo." }, 502);
+  return json({ id: job.id, status: job.status || "queued" });
+}
+
+async function handleVideoStatus(request, env) {
+  if (!env.OPENAI_API_KEY) return json({ error: "Falta configurar OPENAI_API_KEY no Cloudflare." }, 500);
+  const id = idLimpo(new URL(request.url).searchParams.get("id"));
+  if (!id) return json({ error: "Numero do pedido do video invalido." }, 400);
+  const r = await fetch("https://api.openai.com/v1/videos/" + id, {
+    headers: { "authorization": "Bearer " + env.OPENAI_API_KEY }
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    return json({ error: "Erro ao consultar o video (" + r.status + "): " + t.slice(0, 300) }, 502);
   }
-  if (job.status !== "completed") return json({ error: "Tempo esgotado. Tente de novo em alguns minutos." }, 504);
-  const vr = await fetch("https://api.openai.com/v1/videos/" + job.id + "/content", { headers: auth });
+  const job = await r.json();
+  if (job.status === "failed") {
+    return json({ status: "failed", error: "Geracao do video falhou: " + ((job.error && job.error.message) || "erro desconhecido") });
+  }
+  return json({ status: job.status || "in_progress", progress: typeof job.progress === "number" ? job.progress : null });
+}
+
+async function handleVideoArquivo(request, env) {
+  if (!env.OPENAI_API_KEY) return json({ error: "Falta configurar OPENAI_API_KEY no Cloudflare." }, 500);
+  const id = idLimpo(new URL(request.url).searchParams.get("id"));
+  if (!id) return json({ error: "Numero do pedido do video invalido." }, 400);
+  const vr = await fetch("https://api.openai.com/v1/videos/" + id + "/content", {
+    headers: { "authorization": "Bearer " + env.OPENAI_API_KEY }
+  });
   if (!vr.ok) {
     const t = await vr.text();
     return json({ error: "Erro ao baixar o video (" + vr.status + "): " + t.slice(0, 300) }, 502);
   }
-  const bufv = await vr.arrayBuffer();
-  const bytes = new Uint8Array(bufv);
-  let bin = "";
-  for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
-  return json({ video: btoa(bin) });
+  return new Response(vr.body, {
+    headers: {
+      "content-type": vr.headers.get("content-type") || "video/mp4",
+      "cache-control": "no-store"
+    }
+  });
 }
 
 function parseCSV(t) {
@@ -614,6 +647,12 @@ export default {
     }
     if (url.pathname === "/api/video" && request.method === "POST") {
       return handleVideo(request, env);
+    }
+    if (url.pathname === "/api/video-status" && request.method === "GET") {
+      return handleVideoStatus(request, env);
+    }
+    if (url.pathname === "/api/video-arquivo" && request.method === "GET") {
+      return handleVideoArquivo(request, env);
     }
     if (url.pathname === "/api/roteiro" && request.method === "POST") {
       return handleRoteiro(request, env);
