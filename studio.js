@@ -25,7 +25,7 @@ body{margin:0;background:var(--db-fundo);color:var(--db-tinta);font-family:var(-
 header{background:var(--db-branco);border-bottom:1px solid var(--db-linha);padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;position:sticky;top:0;z-index:9}
 header img{height:38px}
 .pill{background:var(--db-rosa);color:#fff;font-weight:800;font-size:.72rem;letter-spacing:.16em;padding:6px 12px;border-radius:99px}
-header a{margin-left:auto;color:var(--db-cinza);text-decoration:none;font-size:.85rem;font-weight:600}
+header a{margin-left:auto;color:var(--db-cinza);text-decoration:none;font-size:.85rem;font-weight:600;display:inline-flex;align-items:center;min-height:44px;padding:0 10px;border-radius:8px}
 header a:hover{color:var(--db-rosa-texto)}
 .wrap{max-width:1080px;margin:0 auto;padding:22px 18px}
 .card{background:var(--db-branco);border:1px solid var(--db-linha);border-radius:var(--db-raio);padding:20px;margin-bottom:16px}
@@ -75,8 +75,8 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 .spin{font-size:.86rem;color:var(--db-rosa-texto);font-weight:600;padding:10px 0;text-align:center}
 .erro{background:#FDF1F1;border:1px solid #F3C9C9;border-left:4px solid #C0392B;border-radius:10px;padding:11px 13px;font-size:.86rem;color:#7B2222;line-height:1.5;margin-top:10px}
 .custo{font-size:.78rem;color:var(--db-cinza);text-align:center;margin-top:6px}
-.lbl-chk{display:flex;align-items:center;gap:9px;text-transform:none;letter-spacing:0;font-size:.92rem;font-weight:600;color:var(--db-tinta);cursor:pointer;margin:0}
-.lbl-chk input{width:auto;padding:0;margin:0}
+.lbl-chk{display:flex;align-items:center;gap:12px;text-transform:none;letter-spacing:0;font-size:.92rem;font-weight:600;color:var(--db-tinta);cursor:pointer;margin:0;min-height:44px;padding:4px 0}
+.lbl-chk input{width:auto;padding:0;margin:0;min-width:24px;min-height:24px;flex:0 0 auto;accent-color:var(--db-rosa)}
 .pago{display:inline-block;background:#FFF6E8;border:1px solid #F0DCC0;color:#8A5A16;font-size:.68rem;font-weight:800;letter-spacing:.08em;padding:3px 8px;border-radius:99px;margin-left:8px;vertical-align:2px}
 .gratis{display:inline-block;background:#F1F7F1;border:1px solid #D6E8D6;color:#2F6B32;font-size:.68rem;font-weight:800;letter-spacing:.08em;padding:3px 8px;border-radius:99px;margin-left:8px;vertical-align:2px}
 </style></head><body>
@@ -137,7 +137,10 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 
  <div class="card">
   <h2>3 · Ficha do produto</h2>
-  <p>É daqui que saem as 6 fotos do anúncio. O que estiver escrito aqui é o que a imagem vai mostrar — e só isso. Campo vazio é foto que não sai: prefiro te perguntar a inventar um detalhe que o produto não tem.</p>
+  <p>É daqui que saem as fotos do anúncio. O que estiver escrito aqui é o que a imagem vai mostrar — e só isso. Campo vazio é foto que não sai: prefiro te perguntar a inventar um detalhe que o produto não tem.</p>
+  <p style="font-size:.86rem"><strong>Tudo que você digita aqui fica guardado no seu próprio navegador.</strong> Pode recarregar a página, pode o celular dormir, pode fechar e voltar depois: a ficha volta do jeito que estava. Nada disso sai do seu aparelho.</p>
+  <div id="memMsg"></div>
+  <button class="btn btn-g" id="memLimpar" style="margin-bottom:14px">Limpar a ficha e começar outro produto<span class="gratis">NÃO CUSTA NADA</span></button>
   <div class="g2">
    <div class="field"><label>Nome do produto</label><input id="fNome" placeholder="Refil SAYO S+3"></div>
    <div class="field"><label>SKU</label><input id="fSku" placeholder="FER-0072"></div>
@@ -148,6 +151,8 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
   </div>
   <div class="field"><label>Diferencial que dá para VER numa foto</label><textarea id="fDif" style="min-height:66px" placeholder="Ex.: o elemento filtrante novo, claro, ao lado de um saturado pelo uso. Só o que aparece na imagem — vazão e certificado não entram aqui."></textarea></div>
   <div class="field"><label>O que vem na caixa — item por item</label><textarea id="fCaixa" style="min-height:66px" placeholder="Ex.: 1 refil SAYO S+3 e a caixa. Nada além disso."></textarea></div>
+  <div class="field"><label>Comparação — como é SEM o seu produto (foto 7)</label><textarea id="fComp" style="min-height:66px" placeholder="Ex.: pacotes de mantimento abertos e amassados, presos com prendedor, jogados soltos na mesma prateleira, farinha derramada. Só a cena — sem escrever &quot;antes&quot; nem &quot;depois&quot; na imagem."></textarea></div>
+  <div class="field"><label>Passo a passo — uma etapa por linha, no máximo 4 (foto 8)</label><textarea id="fPasso" style="min-height:80px;font-size:.88rem" placeholder="Ex.:&#10;mãos despejando o arroz dentro do pote aberto&#10;mãos encaixando a tampa e fechando as duas travas laterais&#10;mãos colando a etiqueta na frente do pote&#10;mãos empilhando o pote fechado em cima de outro igual"></textarea></div>
 
   <div class="field" style="margin-top:16px"><label class="lbl-chk"><input type="checkbox" id="fKit">Este produto é um kit — vem mais de uma peça na caixa</label></div>
   <div id="kitBox" style="display:none">
@@ -160,7 +165,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
   <div class="field" style="margin-top:16px"><label>Fotos reais do produto (até 4)</label><input type="file" id="fFotos" accept="image/*" multiple></div>
   <div class="tira" id="fThumbs"></div>
   <div class="aviso">A foto real é o que segura a fidelidade: cor, formato, textura e rótulo saem dela. Sem foto real eu até gero, mas aí é desenho do que a IA acha que o seu produto é — e isso não vai para anúncio. Não tem foto limpa, só aquela arte do fornecedor cheia de texto e marca? Use o <strong>recorte</strong> logo aqui embaixo.</div>
-  <button class="btn btn-p" id="fMontar">Montar os 6 prompts</button>
+  <button class="btn btn-p" id="fMontar">Montar os prompts das fotos</button>
   <div id="fMsg"></div>
  </div>
 
@@ -186,7 +191,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
  </div>
 
  <div class="card" id="cfotos" style="display:none">
-  <h2>4 · As 6 fotos — parada 1</h2>
+  <h2>4 · As fotos do anúncio — parada 1</h2>
   <p>Uma foto por vez. Eu não sigo sozinho para a próxima: você olha, aprova ou manda refazer. Se a imagem sair errada, clique em <strong>Não concordo</strong> embaixo dela: eu olho a imagem e reescrevo o prompt. Cada prompt abaixo pode ser editado antes de gerar — o texto que estiver na caixa é exatamente o que vai para a IA.</p>
   <div class="field" style="max-width:280px">
    <label>Qualidade da imagem</label>
@@ -223,7 +228,7 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
    </div>
   </div>
   <div class="tira" id="aThumb"></div>
-  <div class="aviso" id="aFonte">Ainda não tenho imagem para olhar. Suba o arquivo acima — ou gere uma das 6 fotos aqui em cima e clique em <strong>Não concordo</strong>, que eu pego a imagem sozinho.</div>
+  <div class="aviso" id="aFonte">Ainda não tenho imagem para olhar. Suba o arquivo acima — ou gere uma das fotos aqui em cima e clique em <strong>Não concordo</strong>, que eu pego a imagem sozinho.</div>
   <div class="field" style="margin-top:12px">
    <label>O que eu não gostei / o que quero que mude</label>
    <textarea id="aQueixa" style="min-height:90px" placeholder="Escreva do seu jeito. Ex.: vieram só 12 potes e tinham que ser 15 · todos saíram do mesmo tamanho · apareceu o nome do fabricante na tampa · o fundo saiu cinza em vez de branco · a etiqueta veio escrita e tinha que vir em branco"></textarea>
@@ -295,7 +300,8 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
  <div class="card" id="cVd">
   <h2>10 · Gerar o vídeo<span class="tag t-gate">PARADA 4</span><span class="pago">O PASSO MAIS CARO</span></h2>
   <p>Só roda com o quadro-chave aprovado como referência — nunca do zero. Leva de <strong>1 a 4 minutos</strong> e custa cerca de <strong>R$ 6,60</strong> a cada 4 segundos.</p>
-  <p style="font-size:.86rem">Não feche a página enquanto ele estiver gerando, e <strong>baixe o arquivo assim que aparecer</strong>: nada fica guardado no servidor.</p>
+  <p style="font-size:.86rem">Depois que você manda gerar, <strong>o pedido fica guardado no seu navegador</strong>. Se a página cair, se o celular dormir ou se você fechar sem querer, dá para voltar aqui e buscar o vídeo que já foi pago, em vez de pagar de novo. Mesmo assim: <strong>baixe o arquivo assim que ele aparecer</strong>, porque no servidor ele não fica guardado para sempre.</p>
+  <div id="vdResgate"></div>
   <div id="vdMsg"></div>
   <button class="btn btn-p" id="vdGerar" disabled>Gerar o vídeo</button>
   <div class="custo" id="vdCusto"></div>
@@ -335,6 +341,24 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 <script>
 function q(i){return document.getElementById(i)}
 function num(i){var t=(q(i).value||'').replace(',','.').replace(/[^0-9.]/g,'');var n=parseFloat(t);return isFinite(n)&&n>0?n:0}
+
+/* ---- le a resposta do servidor sem jogar erro tecnico na tela ----
+   Quando o servidor cai, ele devolve uma pagina de erro em HTML em vez de dados.
+   Sem isto a tela mostrava "Unexpected token <", que nao explica nada. */
+function lerJson(r){
+ return r.text().then(function(t){
+  try{return JSON.parse(t)}catch(e){
+   var m='O servidor não respondeu direito agora.',fim=' Espere alguns segundos e tente de novo.';
+   if(r.status===504||r.status===524)m='O servidor demorou demais e a conexão caiu no meio do caminho.';
+   else if(r.status===502||r.status===503)m='O servidor está fora do ar neste momento.';
+   else if(r.status===429){m='Muitos pedidos seguidos. Espere um minuto antes de tentar de novo.';fim=''}
+   else if(r.status===413){m='O arquivo que você mandou é grande demais para o servidor aceitar.';fim=''}
+   else if(r.status>=500)m='Deu erro dentro do servidor (código '+r.status+').';
+   else if(r.status>=400)m='O servidor recusou o pedido (código '+r.status+').';
+   throw new Error(m+fim);
+  }
+ });
+}
 
 /* ---- entrada vinda do ANNOUNCER PRO ---- */
 (function(){
@@ -406,6 +430,45 @@ q('calc').onclick=function(){
 function fmt(n){return (Math.round(n*10)/10).toString().replace('.',',')}
 /* ================= ETAPA 2 — ficha do produto e as 6 fotos ================= */
 var FOTOS_REAIS=[];
+
+/* ---- memoria da ficha: nada do que ela digita se perde ao recarregar ----
+   Grava tudo em localStorage 'db_studio_ficha' a cada tecla e devolve ao abrir.
+   Fica so no navegador dela; nada disso vai para servidor nenhum. */
+var FICHA_CAMPOS=['fNome','fSku','fMarca','fCat','fDif','fCaixa','fComp','fPasso','fPecas','fdTxt','mA','hA','wA','dA','mB','hB','wB','dB','rtPedido'];
+function fichaSalvar(){
+ try{
+  var o={};
+  FICHA_CAMPOS.forEach(function(id){var e=q(id);if(e)o[id]=e.value});
+  o.fKit=q('fKit').checked;
+  var et=q('escTxt');o.escTxt=et?et.textContent:'';
+  localStorage.setItem('db_studio_ficha',JSON.stringify(o));
+ }catch(e){}
+}
+function fichaLimpar(){
+ try{localStorage.removeItem('db_studio_ficha')}catch(e){}
+ FICHA_CAMPOS.forEach(function(id){var e=q(id);if(e)e.value=''});
+ q('fKit').checked=false;q('kitBox').style.display='none';
+ q('escOut').style.display='none';q('escTxt').textContent='';
+ q('fMsg').innerHTML='';q('seis').innerHTML='';q('kitOut').innerHTML='';q('fdOut').innerHTML='';q('fdMsg').innerHTML='';
+ q('memMsg').innerHTML='<div class="aviso ok">Ficha limpa. Pode começar um produto novo.</div>';
+}
+(function(){
+ var d=null;try{var r=localStorage.getItem('db_studio_ficha');if(r)d=JSON.parse(r)}catch(e){}
+ if(d){
+  FICHA_CAMPOS.forEach(function(id){var e=q(id);if(e&&typeof d[id]==='string'&&d[id])e.value=d[id]});
+  if(d.fKit){q('fKit').checked=true;q('kitBox').style.display='block'}
+  if(d.escTxt){q('escTxt').textContent=d.escTxt;q('escOut').style.display='block'}
+  var cheio=FICHA_CAMPOS.some(function(id){var e=q(id);return e&&e.value});
+  if(cheio)q('memMsg').innerHTML='<div class="aviso ok">Recuperei o que você já tinha digitado da última vez. Se for outro produto agora, clique em <strong>Limpar a ficha</strong> aqui embaixo.</div>';
+ }
+ FICHA_CAMPOS.forEach(function(id){var e=q(id);if(e){e.addEventListener('input',fichaSalvar);e.addEventListener('change',fichaSalvar)}});
+ q('fKit').addEventListener('change',fichaSalvar);
+ var origCalc=q('calc').onclick;
+ q('calc').onclick=function(){if(origCalc)origCalc.call(this);fichaSalvar()};
+ q('memLimpar').onclick=function(){
+  if(confirm('Apagar tudo que está escrito na ficha, nas medidas e na ficha do fornecedor?\n\nIsso não apaga nenhuma foto já baixada.'))fichaLimpar();
+ };
+})();
 
 /* preenche a ficha com o que veio do ANNOUNCER PRO */
 (function(){
@@ -495,7 +558,9 @@ function receita(i,F){
   return {modo:'ambiente',txt:'Duas maos adultas'+comp+', em um ambiente domestico real e organizado, luz natural de janela. Enquadramento das maos ate a altura do peito.\nREGRA DESTA FOTO, obrigatoria: SEM ROSTO, sem cabeca, sem pessoa de corpo inteiro, sem reflexo de rosto em nenhuma superficie. Maos com anatomia correta, cinco dedos em cada, sem anel e sem unha postica. O produto aparece inteiro e reconhecivel.'};
  }
  if(i===5)return {modo:'estudio',txt:'Os produtos juntos, os dois INTEIROS, em pe, sobre a mesma bancada, com a mesma luz e a mesma distancia de camera, fundo cinza claro neutro.\n\n'+F.escala+'\n\nNenhum numero, nenhuma medida e nenhuma regua desenhada na imagem: a escala se le pela comparacao entre os dois produtos.'};
- return {modo:'estudio',txt:'Flat lay visto de cima, fundo branco liso, itens alinhados com espacamento igual e sombra suave, mostrando exatamente e somente os seguintes itens que acompanham o '+nome+cat+': '+F.caixa+'\nNenhum item alem destes. Nenhum acessorio extra, nenhum manual, nenhuma peca que nao esteja escrita acima. Nenhum texto na imagem.'};
+ if(i===6)return {modo:'estudio',txt:'Flat lay visto de cima, fundo branco liso, itens alinhados com espacamento igual e sombra suave, mostrando exatamente e somente os seguintes itens que acompanham o '+nome+cat+': '+F.caixa+'\nNenhum item alem destes. Nenhum acessorio extra, nenhum manual, nenhuma peca que nao esteja escrita acima. Nenhum texto na imagem.'};
+ if(i===7)return {modo:'estudio',txt:'Uma unica imagem dividida ao meio por uma linha vertical fina, fundo cinza claro neutro e liso nos dois lados, MESMA luz, MESMA altura de camera e MESMA distancia nos dois lados.\nDo lado DIREITO: '+nome+', arrumado, limpo e organizado.\nDo lado ESQUERDO: '+F.comp+'\nOs dois lados ocupam exatamente metade da imagem cada um. Os objetos aparecem inteiros, sem corte.\nREGRA DESTA FOTO, obrigatoria: nenhum texto, nenhuma palavra, nenhum numero, nenhuma seta, nenhum icone, nenhum X e nenhum sinal de certo ou errado desenhado na imagem. A comparacao se le pela propria cena. A legenda entra depois por fora.'};
+ return {modo:'ambiente',txt:'Uma unica imagem dividida em '+F.passos.length+' quadros iguais, lado a lado na horizontal, todos com o MESMO fundo cinza claro neutro, a MESMA luz e a MESMA distancia de camera, mostrando na ordem como se usa o '+nome+':\n'+F.passos.map(function(p,n){return 'Quadro '+(n+1)+': '+p}).join('\n')+'\nSao maos adultas em todos os quadros. SEM ROSTO, sem cabeca, sem pessoa de corpo inteiro. Maos com anatomia correta, cinco dedos em cada, sem anel e sem unha postica. O produto aparece inteiro e reconhecivel em todos os quadros.\nREGRA DESTA FOTO, obrigatoria: nenhum texto, nenhum numero, nenhuma seta e nenhum icone desenhado na imagem. A numeracao dos passos entra depois por fora.'};
 }
 
 var TITULOS=[
@@ -504,8 +569,14 @@ var TITULOS=[
  ['DIFERENCIAL','Justificar por que o seu vale mais.'],
  ['USO REAL','A pessoa se imaginar usando.'],
  ['TAMANHO REAL','Acabar com a dúvida de tamanho — é o que mais gera pergunta e devolução.'],
- ['O QUE VEM NA CAIXA','Valor percebido e transparência.']
+ ['O QUE VEM NA CAIXA','Valor percebido e transparência.'],
+ ['COMPARAÇÃO','Mostrar lado a lado por que o seu resolve e o outro jeito não resolve.'],
+ ['PASSO A PASSO','Tirar o medo de não saber usar — é a objeção silenciosa que mais trava a compra.']
 ];
+var NFOTOS=TITULOS.length;
+/* fotos que aceitam frase escrita por cima. A CAPA nunca entra:
+   o Mercado Livre bloqueia capa com texto, logotipo, selo ou marca d agua. */
+var COM_LEGENDA={2:1,3:1,6:1,7:1,8:1};
 
 function fichaAtual(){
  return {
@@ -515,6 +586,8 @@ function fichaAtual(){
   cat:q('fCat').value.trim(),
   dif:q('fDif').value.trim(),
   caixa:q('fCaixa').value.trim(),
+  comp:q('fComp').value.trim(),
+  passos:(q('fPasso').value||'').split('\n').map(function(s){return s.trim()}).filter(function(s){return s}).slice(0,4),
   compat:(q('mA').value.trim()||''),
   escala:(q('escTxt').textContent||'').trim(),
   kit:q('fKit').checked,
@@ -561,64 +634,143 @@ q('kitLer').onclick=function(){
 q('fMontar').onclick=function(){
  var F=fichaAtual(),msg=q('fMsg');
  if(document.querySelector('#seis .foto.aprovada')&&!confirm('Você já tem foto aprovada aqui embaixo. Montar os prompts de novo limpa as imagens da tela.\n\nSe ainda não baixou, cancele e baixe primeiro. Continuar?'))return;
- if(!q('fNome').value.trim()){msg.innerHTML='<div class="erro">Escreva ao menos o nome do produto — é ele que entra em todos os 6 prompts.</div>';return}
+ if(!q('fNome').value.trim()){msg.innerHTML='<div class="erro">Escreva ao menos o nome do produto — é ele que entra em todos os prompts.</div>';return}
  var faltas=[];
  if(!FOTOS_REAIS.length)faltas.push('nenhuma <strong>foto real</strong> anexada — sem ela a IA desenha o que ela acha que o seu produto é');
  if(!F.dif)faltas.push('o campo <strong>diferencial</strong> está vazio — a foto 3 fica travada até você escrever');
  if(!F.caixa)faltas.push('o campo <strong>o que vem na caixa</strong> está vazio — a foto 6 fica travada, porque mostrar item que não vai junto vira reclamação');
  if(F.kit&&!F.pecas.length)faltas.push('você marcou <strong>kit</strong> mas as peças ainda não foram lidas — escreva uma peça por linha e clique em "Conferir o que eu entendi"; sem isso as fotos 1, 5 e 6 saem sem a contagem e a IA erra a quantidade');
  if(!F.escala&&!(F.kit&&F.pecas.length))faltas.push('a <strong>frase de escala</strong> ainda não foi gerada — role para o contrato de medidas e clique no botão; a foto 5 depende dela');
- msg.innerHTML=faltas.length?('<div class="aviso" style="margin-top:10px">Montei o que dava. Ainda falta: '+faltas.join(' · ')+'.</div>'):'<div class="aviso ok" style="margin-top:10px">Ficha completa. As 6 fotos estão liberadas.</div>';
+ if(!F.comp)faltas.push('o campo <strong>comparação</strong> está vazio — a foto 7 fica travada. Ela é opcional: sem ela o anúncio funciona, com ela costuma converter melhor');
+ if(F.passos.length<2)faltas.push('o campo <strong>passo a passo</strong> tem menos de 2 etapas — a foto 8 fica travada. Também é opcional');
  montarSeis(F);
+ msg.innerHTML=faltas.length?('<div class="aviso" style="margin-top:10px"><strong>'+LIBERADAS.length+' de '+NFOTOS+' fotos liberadas.</strong> Ainda falta: '+faltas.join(' · ')+'.</div>'):'<div class="aviso ok" style="margin-top:10px">Ficha completa. As '+NFOTOS+' fotos estão liberadas.</div>';
  q('cfotos').style.display='block';
  q('cfotos').scrollIntoView({behavior:'smooth',block:'start'});
 };
 
+var LIBERADAS=[];
 function montarSeis(F){
- var alvo=q('seis');alvo.innerHTML='';
- for(var i=1;i<=6;i++){
+ var alvo=q('seis');alvo.innerHTML='';LIBERADAS=[];
+ var lote=document.createElement('div');
+ lote.className='card';lote.style.background='var(--db-rosa-nevoa)';lote.style.border='1px solid var(--db-rosa-claro)';
+ lote.innerHTML='<div id="loteBox"></div>';
+ alvo.appendChild(lote);
+ for(var i=1;i<=NFOTOS;i++){
   var t=TITULOS[i-1],r=receita(i,F),trava='';
-  if(i===3&&!F.dif)trava='Escreva o <strong>diferencial</strong> na ficha e clique de novo em "Montar os 6 prompts".';
-  if(i===5&&!F.escala&&!(F.kit&&F.pecas.length))trava='Gere a <strong>frase de escala</strong> no contrato de medidas e clique de novo em "Montar os 6 prompts". Se for kit, dá para usar as peças: marque <strong>kit</strong> na ficha e clique em "Conferir o que eu entendi".';
-  if(i===6&&!F.caixa)trava='Escreva <strong>o que vem na caixa</strong> na ficha e clique de novo em "Montar os 6 prompts".';
+  if(i===3&&!F.dif)trava='Escreva o <strong>diferencial</strong> na ficha e clique de novo em "Montar os prompts das fotos".';
+  if(i===5&&!F.escala&&!(F.kit&&F.pecas.length))trava='Gere a <strong>frase de escala</strong> no contrato de medidas e clique de novo em "Montar os prompts das fotos". Se for kit, dá para usar as peças: marque <strong>kit</strong> na ficha e clique em "Conferir o que eu entendi".';
+  if(i===6&&!F.caixa)trava='Escreva <strong>o que vem na caixa</strong> na ficha e clique de novo em "Montar os prompts das fotos".';
+  if(i===7&&!F.comp)trava='Escreva no campo <strong>Comparação</strong> da ficha como é a vida SEM o seu produto, e clique de novo em "Montar os prompts das fotos". Esta foto é opcional: sem ela o anúncio funciona, com ela costuma converter melhor.';
+  if(i===8&&F.passos.length<2)trava='Escreva pelo menos <strong>2 etapas</strong> no campo Passo a passo da ficha, uma por linha, e clique de novo em "Montar os prompts das fotos". Esta foto também é opcional.';
   var d=document.createElement('div');
   d.className='foto';d.id='fb'+i;
   var h='<h3>FOTO '+i+' — '+t[0]+'</h3><p class="obj">'+t[1]+'</p>';
   if(trava){h+='<div class="aviso">'+trava+'</div>';}
   else{
    h+='<textarea id="pp'+i+'"></textarea>';
+   if(COM_LEGENDA[i]){
+    h+='<div class="field" style="margin-top:10px"><label>Frase para escrever por cima — no máximo 8 palavras<span class="gratis">NÃO CUSTA NADA</span></label><input id="lg'+i+'" maxlength="46" placeholder="'+esc(SUG_LEGENDA[i]||'')+'"></div>';
+    h+='<div class="custo" id="lc'+i+'">Escrita por mim, no padrão da marca — não pela IA. Deixe em branco se não quiser frase nenhuma.</div>';
+   }
    h+='<button class="btn btn-p" id="gg'+i+'">Gerar a foto '+i+'</button>';
    h+='<div class="custo" id="cc'+i+'"></div>';
    h+='<div id="ss'+i+'"></div>';
   }
   d.innerHTML=h;alvo.appendChild(d);
   if(!trava){
+   LIBERADAS.push(i);
    q('pp'+i).value=moldura(r.txt,r.modo);
    (function(n){q('gg'+n).onclick=function(){gerar(n,this)}})(i);
+   if(COM_LEGENDA[i])(function(n){q('lg'+n).oninput=function(){avisaLegenda(n)}})(i);
    q('cc'+i).textContent=custoTxt();
   }
  }
+ montarLote();
 }
-q('fQual').onchange=function(){for(var i=1;i<=6;i++){var e=document.getElementById('cc'+i);if(e)e.textContent=custoTxt()}};
+var SUG_LEGENDA={2:'Fecha e trava dos dois lados',3:'Vedação de silicone de verdade',6:'Tudo isso vem na caixa',7:'Do bagunçado ao organizado',8:'Enche, fecha, etiqueta e empilha'};
+
+function contaPalavras(t){return (String(t||'').trim().split(/\s+/).filter(function(s){return s}).length)}
+function avisaLegenda(n){
+ var t=q('lg'+n).value,p=contaPalavras(t),box=q('lc'+n);
+ if(!t.trim()){box.innerHTML='Escrita por mim, no padrão da marca — não pela IA. Deixe em branco se não quiser frase nenhuma.';box.style.color='';return}
+ if(p>8){box.innerHTML='<strong>'+p+' palavras.</strong> O mercado recomenda no máximo 8 — mais que isso não se lê no celular. Eu escrevo assim mesmo se você quiser.';box.style.color='var(--db-rosa-texto)';}
+ else{box.innerHTML=p+' palavra'+(p>1?'s':'')+'. Bom tamanho para ler no celular.';box.style.color='';}
+}
+
+/* ---- gerar todas de uma vez, com UMA confirmacao que mostra o preco total ---- */
+function custoUnit(){var v=q('fQual').value;return v==='low'?0.06:v==='high'?1.00:0.25}
+function reais(n){return 'R$ '+n.toFixed(2).replace('.',',')}
+function montarLote(){
+ var box=q('loteBox');if(!box)return;
+ var n=LIBERADAS.length;
+ if(!n){box.innerHTML='<div class="aviso">Nenhuma foto liberada ainda. Preencha a ficha ali em cima.</div>';return}
+ box.innerHTML='<h3 style="margin:0 0 6px">Gerar tudo de uma vez</h3>'
+  +'<p style="margin:0 0 12px">São <strong>'+n+' fotos</strong> liberadas. Eu gero uma atrás da outra e mostro cada uma aqui embaixo. <strong>Você confirma o preço uma vez só</strong> — depois cada foto continua podendo ser aprovada, refeita ou ajustada separadamente.</p>'
+  +'<button class="btn btn-p" id="loteGo">Gerar as '+n+' fotos<span class="pago">'+reais(n*custoUnit())+' no total</span></button>'
+  +'<button class="btn btn-g" id="loteDl" style="margin-top:8px;width:100%">Baixar todas as fotos prontas em 1200 × 1200</button>'
+  +'<div id="loteMsg"></div>';
+ q('loteGo').onclick=function(){loteGerar(this)};
+ q('loteDl').onclick=function(){loteBaixar()};
+ q('loteDl').disabled=!LIBERADAS.some(function(i){return document.getElementById('ii'+i)});
+}
+var LOTE_RODANDO=false;
+function loteGerar(btn){
+ if(LOTE_RODANDO)return;
+ var faltam=LIBERADAS.filter(function(i){return !document.getElementById('ii'+i)});
+ if(!faltam.length){alert('Todas as fotos liberadas já foram geradas. Para refazer uma, use o botão "Gerar de novo" dentro dela.');return}
+ var total=faltam.length*custoUnit();
+ var lista=faltam.map(function(i){return 'foto '+i+' — '+TITULOS[i-1][0]}).join('\n');
+ if(!confirm('Gerar '+faltam.length+' fotos agora?\n\n'+lista+'\n\nCusto total estimado: '+reais(total)+'\n('+faltam.length+' × '+reais(custoUnit())+' na qualidade '+q('fQual').value+')\n\nEssa é a única cobrança deste passo. Cancelar aqui não gasta nada.'))return;
+ LOTE_RODANDO=true;btn.disabled=true;
+ var feitas=0;
+ function passo(k){
+  if(k>=faltam.length){
+   LOTE_RODANDO=false;btn.disabled=false;btn.innerHTML='Gerar as que faltarem<span class="pago">'+reais(custoUnit())+' cada</span>';
+   q('loteMsg').innerHTML='<div class="aviso ok" style="margin-top:10px">Pronto: '+feitas+' de '+faltam.length+' fotos saíram. Role a página para conferir uma por uma, aprovar ou mandar refazer. <strong>Baixe os arquivos antes de fechar a página.</strong></div>';
+   q('loteDl').disabled=false;
+   return;
+  }
+  var i=faltam[k];
+  btn.textContent='Gerando a foto '+i+'... ('+(k+1)+' de '+faltam.length+')';
+  q('loteMsg').innerHTML='<div class="aviso" style="margin-top:10px">Gerando a foto '+i+' — '+TITULOS[i-1][0]+'. Cada foto leva de 20 a 60 segundos. Não feche a página.</div>';
+  gerar(i,q('gg'+i),{semConfirmar:true,aoTerminar:function(deuCerto){if(deuCerto)feitas++;passo(k+1)}});
+ }
+ passo(0);
+}
+function loteBaixar(){
+ var prontas=LIBERADAS.filter(function(i){return document.getElementById('ii'+i)});
+ if(!prontas.length){alert('Nenhuma foto pronta para baixar ainda.');return}
+ prontas.forEach(function(i,k){setTimeout(function(){baixar(i,q('ii'+i).src)},k*450)});
+ q('loteMsg').innerHTML='<div class="aviso ok" style="margin-top:10px">Baixando '+prontas.length+' arquivos, um a cada meio segundo. Se o navegador perguntar se pode baixar vários, diga que sim.</div>';
+}
+q('fQual').onchange=function(){
+ for(var i=1;i<=NFOTOS;i++){var e=document.getElementById('cc'+i);if(e)e.textContent=custoTxt()}
+ montarLote();
+};
 function custoTxt(){var v=q('fQual').value;return 'Custo estimado desta imagem: '+(v==='low'?'R$ 0,06':v==='high'?'R$ 1,00':'R$ 0,25');}
 
-function gerar(i,btn){
+function gerar(i,btn,opc){
+ opc=opc||{};
+ var fim=opc.aoTerminar||function(){};
  var p=(q('pp'+i).value||'').trim();
- if(!p){alert('O prompt da foto '+i+' está vazio.');return}
- if(!confirm('Gerar a foto '+i+' agora?\n\n'+custoTxt()+'\n\nEssa é a única cobrança deste passo. Se não gostar, você manda refazer.'))return;
+ if(!p){if(opc.semConfirmar){fim(false);return}alert('O prompt da foto '+i+' está vazio.');return}
+ if(!opc.semConfirmar&&!confirm('Gerar a foto '+i+' agora?\n\n'+custoTxt()+'\n\nEssa é a única cobrança deste passo. Se não gostar, você manda refazer.')){return}
  var box=q('ss'+i);box.innerHTML='<div class="spin">Gerando a foto '+i+'... isso leva de 20 a 60 segundos.</div>';
  btn.disabled=true;btn.textContent='Gerando...';
  fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},
   body:JSON.stringify({prompt:p,quality:q('fQual').value,size:'1024x1024',imagens:FOTOS_REAIS})})
- .then(function(r){return r.json()})
+ .then(lerJson)
  .then(function(j){
   btn.disabled=false;btn.textContent='Gerar de novo a foto '+i;
-  if(j.error){box.innerHTML='<div class="erro">'+esc(j.error)+'</div>';return}
-  if(!j.image){box.innerHTML='<div class="erro">A resposta veio sem imagem. Tente de novo.</div>';return}
+  if(j.error){box.innerHTML='<div class="erro">'+esc(j.error)+'</div>';fim(false);return}
+  if(!j.image){box.innerHTML='<div class="erro">A resposta veio sem imagem. Tente de novo.</div>';fim(false);return}
   var u='data:image/png;base64,'+j.image;
   var Fa=fichaAtual(),temMed=(i===5&&Fa.kit&&Fa.pecas.length>=2);
+  var lg=COM_LEGENDA[i]&&q('lg'+i)?(q('lg'+i).value||'').trim():'';
   box.innerHTML='<img class="imgout" id="ii'+i+'" src="'+u+'">'
    +(temMed?'<button class="btn btn-g" id="md5" style="margin-top:10px">Escrever as medidas reais por cima e baixar<span class="gratis">NÃO CUSTA NADA</span></button><div class="custo">O texto é escrito por mim, não pela IA — os números são exatamente os que você digitou.</div>':'')
+   +(COM_LEGENDA[i]?'<button class="btn btn-g" id="lb'+i+'" style="margin-top:10px;width:100%">Escrever a frase por cima<span class="gratis">NÃO CUSTA NADA</span></button><div class="custo" id="lm'+i+'">'+(lg?'Vai escrever: <strong>'+esc(lg)+'</strong>':'Escreva a frase no campo ali em cima e clique aqui. A CAPA nunca leva texto — o Mercado Livre bloqueia capa com texto ou selo.')+'</div>':'')
    +'<div class="g2" style="margin-top:10px">'
    +'<button class="btn btn-g" id="dl'+i+'">Baixar em 1200 x 1200</button>'
    +'<button class="btn btn-p" id="ok'+i+'">Está boa, aprovar</button></div>'
@@ -633,17 +785,60 @@ function gerar(i,btn){
     salvar(url,(Fa.sku||'produto')+'-foto5-medidas.png');
    });
   };
-  q('dl'+i).onclick=function(){baixar(i,u)};
+  if(COM_LEGENDA[i])q('lb'+i).onclick=function(){
+   var frase=(q('lg'+i).value||'').trim();
+   if(!frase){alert('Escreva a frase no campo "Frase para escrever por cima" ali em cima da foto '+i+'.');return}
+   var b=this;b.disabled=true;b.textContent='Escrevendo...';
+   legendaSobre(q('ii'+i).src,frase,function(url){
+    b.disabled=false;b.innerHTML='Escrever de novo (troque a frase antes)<span class="gratis">NÃO CUSTA NADA</span>';
+    q('ii'+i).src=url;
+    q('lm'+i).innerHTML='Frase escrita na imagem. Clique em <strong>Baixar em 1200 × 1200</strong> para guardar o arquivo com a frase.';
+   });
+  };
+  q('dl'+i).onclick=function(){baixar(i,q('ii'+i).src)};
   q('ok'+i).onclick=function(){
    q('fb'+i).classList.add('aprovada');
    q('ap'+i).innerHTML='<div class="aviso ok" style="margin-top:10px">Foto '+i+' aprovada. Baixe o arquivo antes de fechar a página — ele não fica guardado no servidor.</div>';
    this.disabled=true;this.textContent='Aprovada';
   };
+  var bd=document.getElementById('loteDl');if(bd)bd.disabled=false;
+  fim(true);
  })
  .catch(function(e){
   btn.disabled=false;btn.textContent='Gerar de novo a foto '+i;
   box.innerHTML='<div class="erro">Não consegui falar com o gerador de imagem. '+esc(String(e&&e.message||e))+'</div>';
+  fim(false);
  });
+}
+
+/* ---- escreve a frase por cima da foto: faixa rosa no alto, letra branca ----
+   Quem escreve sou eu, no canvas, com o texto que ELA digitou. A IA nunca
+   escreve palavra dentro da imagem: e onde a IA mais erra. */
+function legendaSobre(u,frase,cb){
+ var im=new Image();
+ im.onload=function(){fontesProntas(function(){
+  var S=1200,c=document.createElement('canvas');c.width=S;c.height=S;
+  var x=c.getContext('2d');x.imageSmoothingQuality='high';
+  x.fillStyle='#FFFFFF';x.fillRect(0,0,S,S);
+  x.drawImage(im,0,0,S,S);
+  var palavras=String(frase).trim().split(/\s+/),linhas=[];
+  if(palavras.length<=4){linhas=[palavras.join(' ')]}
+  else{var meio=Math.ceil(palavras.length/2);linhas=[palavras.slice(0,meio).join(' '),palavras.slice(meio).join(' ')]}
+  var H=linhas.length>1?Math.round(S*0.20):Math.round(S*0.14);
+  x.fillStyle=DBC.rosa;x.fillRect(0,0,S,H);
+  x.textAlign='center';x.textBaseline='middle';x.fillStyle='#FFFFFF';
+  var larg=S-120,tam=linhas.length>1?62:76,menor=tam;
+  linhas.forEach(function(l){var s=caber(x,l,larg,'800',tam,26);if(s<menor)menor=s});
+  x.font='800 '+menor+'px '+FT;
+  if(linhas.length>1){
+   x.fillText(linhas[0],S/2,H/2-menor*0.6);
+   x.fillText(linhas[1],S/2,H/2+menor*0.6);
+  }else{x.fillText(linhas[0],S/2,H/2)}
+  x.textBaseline='alphabetic';
+  cb(c.toDataURL('image/png'));
+ })};
+ im.onerror=function(){alert('Não consegui abrir a imagem para escrever a frase por cima.')};
+ im.src=u;
 }
 
 function baixar(i,u){
@@ -756,7 +951,7 @@ q('aGo').onclick=function(){
  msg.innerHTML='<div class="spin">Olhando a imagem e reescrevendo o prompt... leva de 10 a 40 segundos.</div>';
  fetch('/api/analisar',{method:'POST',headers:{'content-type':'application/json'},
   body:JSON.stringify({prompt:pr,queixa:qx,ficha:fichaTxt(),imagem:im})})
- .then(function(r){return r.json()})
+ .then(lerJson)
  .then(function(j){
   btn.disabled=false;btn.textContent='Analisar de novo';
   if(j.error){msg.innerHTML='<div class="erro">'+esc(j.error)+'</div>';return}
@@ -773,7 +968,7 @@ q('aGo').onclick=function(){
   q('aNovo').value=j.prompt;
   if(n!=='0')q('aUsar').onclick=function(){
    var p=document.getElementById('pp'+n);
-   if(!p){msg.innerHTML='<div class="erro">A foto '+n+' ainda não está montada. Clique em \u201cMontar os 6 prompts\u201d na ficha e tente de novo.</div>';return}
+   if(!p){msg.innerHTML='<div class="erro">A foto '+n+' ainda não está montada. Clique em \u201cMontar os prompts das fotos\u201d na ficha e tente de novo.</div>';return}
    p.value=q('aNovo').value;
    this.disabled=true;this.textContent='Prompt trocado na foto '+n;
    var cx=document.getElementById('fb'+n);
@@ -1054,7 +1249,7 @@ q('fdLer').onclick = function(){
   }
   this.disabled = true;
   this.textContent = 'Pronto, j\u00e1 est\u00e1 na ficha';
-  q('fdMsg').innerHTML = '<div class="aviso ok">Preenchi na ficha: ' + feitos.join(', ') + '. Agora d\u00ea uma olhada l\u00e1 embaixo, corrija o que quiser com as suas palavras, anexe as fotos reais e s\u00f3 depois clique em <strong>Montar os 6 prompts</strong>.</div>';
+  q('fdMsg').innerHTML = '<div class="aviso ok">Preenchi na ficha: ' + feitos.join(', ') + '. Agora d\u00ea uma olhada l\u00e1 embaixo, corrija o que quiser com as suas palavras, anexe as fotos reais e s\u00f3 depois clique em <strong>Montar os prompts das fotos</strong>.</div>';
   q('fNome').scrollIntoView({behavior:'smooth', block:'center'});
  };
 };
@@ -1387,7 +1582,7 @@ q('rtGerar').onclick=function(){
  q('rtOut').innerHTML='<div class="spin">Escrevendo o roteiro... alguns segundos.</div>';
  fetch('/api/roteiro',{method:'POST',headers:{'content-type':'application/json'},
   body:JSON.stringify({modo:'roteiro',ficha:fichaTxt(),escala:F.escala,seg:q('vSeg').value,size:q('vFmt').value,pedido:(q('rtPedido').value||'').trim()})})
- .then(function(r){return r.json()})
+ .then(lerJson)
  .then(function(j){
   b.disabled=false;b.textContent='Escrever o roteiro de novo';
   if(j.error){q('rtOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';travar();return}
@@ -1420,7 +1615,7 @@ q('cnGerar').onclick=function(){
  q('cnOut').innerHTML='<div class="spin">Montando as cenas e escrevendo os dois prompts...</div>';
  fetch('/api/roteiro',{method:'POST',headers:{'content-type':'application/json'},
   body:JSON.stringify({modo:'cenas',ficha:fichaTxt(),escala:F.escala,seg:q('vSeg').value,size:q('vFmt').value,roteiro:ROTEIRO,pedido:(q('rtPedido').value||'').trim()})})
- .then(function(r){return r.json()})
+ .then(lerJson)
  .then(function(j){
   b.disabled=false;b.textContent='Montar de novo as cenas e os prompts';
   if(j.error){q('cnOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';travar();return}
@@ -1465,7 +1660,7 @@ q('qkGerar').onclick=function(){
  q('qkOut').innerHTML='<div class="spin">Gerando o quadro-chave... isso leva de 20 a 60 segundos.</div>';
  fetch('/api/image',{method:'POST',headers:{'content-type':'application/json'},
   body:JSON.stringify({prompt:p,quality:q('fQual').value,size:(q('vFmt').value==='1280x720'?'1536x1024':'1024x1536'),imagens:FOTOS_REAIS})})
- .then(function(r){return r.json()})
+ .then(lerJson)
  .then(function(j){
   b.disabled=false;b.textContent='Gerar de novo o quadro-chave';
   if(j.error){q('qkOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';travar();return}
@@ -1493,33 +1688,131 @@ q('qkGerar').onclick=function(){
  });
 };
 
+/* ---- o video agora e pedido, acompanhado e baixado em passos separados ----
+   Quem espera e o navegador, nao o servidor. Assim o servidor nunca bate no
+   limite de saidas do plano no meio da geracao, que era o jeito de pagar por
+   um video e nao receber o arquivo. O numero do pedido fica guardado aqui no
+   navegador: se a pagina cair, ela busca o mesmo video de volta sem cobrar
+   outra vez. */
+var VD_ESPERANDO=false;
+function vdGuardar(id){
+ try{localStorage.setItem('db_studio_video',JSON.stringify({id:id,quando:new Date().toISOString()}))}catch(e){}
+}
+function vdEsquecer(){
+ try{localStorage.removeItem('db_studio_video')}catch(e){}
+ var r=document.getElementById('vdResgate');if(r)r.innerHTML='';
+}
+function vdSalvo(){
+ try{var t=localStorage.getItem('db_studio_video');return t?JSON.parse(t):null}catch(e){return null}
+}
+function vdMostrarResgate(){
+ var d=vdSalvo(),box=q('vdResgate');
+ if(!d||!d.id){box.innerHTML='';return}
+ var quando='';
+ try{quando=new Date(d.quando).toLocaleString('pt-BR')}catch(e){}
+ box.innerHTML='<div class="aviso"><strong>Tem um vídeo pendente aqui.</strong> Você mandou gerar'+(quando?' em '+esc(quando):'')+' e a página não chegou a mostrar o arquivo. Ele já foi pago — dá para buscar sem gastar de novo.</div>'
+  +'<div class="g2" style="margin-bottom:12px"><button class="btn btn-g" id="vdBuscar">Buscar esse vídeo<span class="gratis">NÃO CUSTA NADA</span></button>'
+  +'<button class="btn btn-g" id="vdDescartar">Descartar esse pedido</button></div>';
+ q('vdBuscar').onclick=function(){vdAcompanhar(d.id,null)};
+ q('vdDescartar').onclick=function(){
+  if(confirm('Esquecer esse pedido de vídeo?\n\nIsso não apaga nada no gerador — só tira o aviso daqui. Se o vídeo já ficou pronto e você não baixou, ele se perde.'))vdEsquecer();
+ };
+}
+
+function vdAcompanhar(id,btn){
+ if(VD_ESPERANDO)return;
+ VD_ESPERANDO=true;
+ if(btn){btn.disabled=true;btn.textContent='Gerando o vídeo...'}
+ vdGuardar(id);
+ var tentativas=0,MAX=90; /* 90 x 5 s = 7 minutos e meio de paciencia */
+ var t0=Date.now();
+ function passou(){var seg=Math.round((Date.now()-t0)/1000);return seg<60?(seg+' segundos'):(Math.floor(seg/60)+' min '+(seg%60)+' s')}
+ function acabou(){VD_ESPERANDO=false;if(btn){btn.disabled=false;btn.textContent='Gerar o vídeo de novo'}}
+ function erro(txt){acabou();q('vdOut').innerHTML='<div class="erro">'+esc(txt)+'</div>';vdMostrarResgate()}
+ function ver(){
+  tentativas++;
+  if(tentativas>MAX){
+   erro('O vídeo está demorando mais do que o normal. O pedido continua vivo lá no gerador: espere um minuto e clique em "Buscar esse vídeo" aqui em cima. Você não paga de novo por isso.');
+   return;
+  }
+  fetch('/api/video-status?id='+encodeURIComponent(id))
+  .then(lerJson)
+  .then(function(j){
+   if(j.error&&j.status!=='failed'){erro(j.error);return}
+   if(j.status==='failed'){vdEsquecer();erro(j.error||'A geração do vídeo falhou no gerador.');return}
+   if(j.status==='completed'){vdBaixarArquivo(id,btn);return}
+   var pc=(typeof j.progress==='number'&&j.progress>0)?(' — '+Math.round(j.progress)+'% pronto'):'';
+   q('vdOut').innerHTML='<div class="spin">Gerando o vídeo há '+passou()+pc+'. Leva de 1 a 4 minutos. Pode deixar a página aberta.</div>';
+   setTimeout(ver,5000);
+  })
+  .catch(function(e){
+   /* uma falha de rede solta nao pode matar a espera de um video ja pago */
+   if(tentativas>=MAX){erro('Perdi o contato com o gerador. '+String(e&&e.message||e));return}
+   q('vdOut').innerHTML='<div class="spin">Conexão oscilou, tentando de novo... (há '+passou()+')</div>';
+   setTimeout(ver,5000);
+  });
+ }
+ q('vdOut').innerHTML='<div class="spin">Vídeo encomendado. Acompanhando...</div>';
+ ver();
+}
+
+function vdBaixarArquivo(id,btn){
+ q('vdOut').innerHTML='<div class="spin">Vídeo pronto. Trazendo o arquivo...</div>';
+ fetch('/api/video-arquivo?id='+encodeURIComponent(id))
+ .then(function(r){
+  if(!r.ok)return r.text().then(function(t){throw new Error('O servidor não entregou o arquivo (código '+r.status+').')});
+  var tipo=r.headers.get('content-type')||'';
+  if(tipo.indexOf('json')>=0)return r.json().then(function(j){throw new Error(j.error||'O servidor devolveu um aviso em vez do vídeo.')});
+  return r.blob();
+ })
+ .then(function(bl){
+  VD_ESPERANDO=false;
+  if(btn){btn.disabled=false;btn.textContent='Gerar o vídeo de novo'}
+  var u=URL.createObjectURL(bl);
+  var mb=(bl.size/1048576).toFixed(1).replace('.',',');
+  q('vdOut').innerHTML='<video class="imgout" id="vdPlay" controls playsinline src="'+u+'"></video>'
+   +'<button class="btn btn-p" id="vdDl" style="margin-top:10px;width:100%">Baixar o vídeo ('+mb+' MB)</button>'
+   +'<div class="aviso" style="margin-top:10px"><strong>Baixe agora.</strong> Assista, e se estiver bom baixe antes de fechar a página.</div>';
+  q('vdDl').onclick=function(){
+   salvar(u,(fichaAtual().sku||'produto')+'-video.mp4');
+   vdEsquecer();
+   q('vdOut').insertAdjacentHTML('beforeend','<div class="aviso ok" style="margin-top:10px">Arquivo baixado. Confira na pasta de downloads do aparelho antes de fechar.</div>');
+  };
+  vdMostrarResgate();
+ })
+ .catch(function(e){
+  VD_ESPERANDO=false;
+  if(btn){btn.disabled=false;btn.textContent='Gerar o vídeo de novo'}
+  q('vdOut').innerHTML='<div class="erro">O vídeo ficou pronto, mas não consegui trazer o arquivo. '+esc(String(e&&e.message||e))+' Clique em <strong>Buscar esse vídeo</strong> aqui em cima para tentar de novo — isso não cobra nada.</div>';
+  vdMostrarResgate();
+ });
+}
+
 q('vdGerar').onclick=function(){
  if(!QK_OK||!QK_B64){alert('Aprove o quadro-chave no passo 9 antes.');return}
  var cv=document.getElementById('cnV');
  var p=((cv&&cv.value)||(CENAS&&CENAS.video)||'').trim();
  if(!p){alert('O prompt do vídeo está vazio.');return}
  var s=q('vSeg').value;
- if(!confirm('Gerar o vídeo de '+s+' segundos agora?\n\nCusto estimado: cerca de '+custoVd()+'.\n\nEste é o passo mais caro do caminho. O vídeo vai usar o quadro-chave que você aprovou como referência.\n\nNão feche a página enquanto ele gera.'))return;
- var b=this;b.disabled=true;b.textContent='Gerando o vídeo...';
- q('vdOut').innerHTML='<div class="spin">Gerando o vídeo... isso leva de 1 a 4 minutos. Não feche a página.</div>';
+ var pend=vdSalvo();
+ if(pend&&pend.id&&!confirm('Atenção: já existe um vídeo pendente aqui, que você mandou gerar antes e ainda não baixou.\n\nSe continuar, esse pedido antigo é descartado e o novo custa cheio.\n\nQuer mesmo gerar um vídeo novo?'))return;
+ if(!confirm('Gerar o vídeo de '+s+' segundos agora?\n\nCusto estimado: cerca de '+custoVd()+'.\n\nEste é o passo mais caro do caminho. O vídeo vai usar o quadro-chave que você aprovou como referência.\n\nSe a página cair no meio, dá para buscar o vídeo de volta sem pagar outra vez.'))return;
+ var b=this;b.disabled=true;b.textContent='Encomendando o vídeo...';
+ q('vdOut').innerHTML='<div class="spin">Encomendando o vídeo ao gerador...</div>';
  fetch('/api/video',{method:'POST',headers:{'content-type':'application/json'},
   body:JSON.stringify({prompt:p,seconds:s,size:q('vFmt').value,imageBase64:QK_B64,mediaType:'image/png'})})
- .then(function(r){return r.json()})
+ .then(lerJson)
  .then(function(j){
-  b.disabled=false;b.textContent='Gerar o vídeo de novo';
-  if(j.error){q('vdOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';return}
-  if(!j.video){q('vdOut').innerHTML='<div class="erro">A resposta veio sem vídeo. Tente de novo.</div>';return}
-  var u='data:video/mp4;base64,'+j.video;
-  q('vdOut').innerHTML='<video class="imgout" id="vdPlay" controls playsinline src="'+u+'"></video>'
-   +'<button class="btn btn-p" id="vdDl" style="margin-top:10px;width:100%">Baixar o vídeo</button>'
-   +'<div class="aviso" style="margin-top:10px"><strong>Baixe agora.</strong> O vídeo não fica guardado em lugar nenhum. Se fechar a página sem baixar, ele se perde e refazer custa o mesmo de novo.</div>';
-  q('vdDl').onclick=function(){salvar(u,(fichaAtual().sku||'produto')+'-video.mp4')};
+  if(j.error){b.disabled=false;b.textContent='Gerar o vídeo';q('vdOut').innerHTML='<div class="erro">'+esc(j.error)+'</div>';return}
+  if(!j.id){b.disabled=false;b.textContent='Gerar o vídeo';q('vdOut').innerHTML='<div class="erro">O gerador não devolveu o número do pedido. Tente de novo — nada foi cobrado.</div>';return}
+  vdAcompanhar(j.id,b);
  })
  .catch(function(e){
   b.disabled=false;b.textContent='Gerar o vídeo';
   q('vdOut').innerHTML='<div class="erro">Não consegui falar com o gerador de vídeo. '+esc(String(e&&e.message||e))+'</div>';
  });
 };
+vdMostrarResgate();
 
 precos();
 travar();
