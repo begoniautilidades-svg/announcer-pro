@@ -34,7 +34,7 @@ FORMATO DA ENTREGA (markdown). Entregue SOMENTE as secoes abaixo, nesta ordem, e
 TITULO: titulo final em uma unica linha, respeitando o limite do canal, terminando com a contagem de caracteres entre parenteses
 TITULO ALTERNATIVO: uma segunda opcao em uma linha
 FICHA TECNICA:
-Campo: valor (uma informacao por linha; inclua obrigatoriamente voltagem, medidas, compatibilidade e CONTEUDO DA EMBALAGEM)
+Campo: valor (uma informacao por linha; inclua obrigatoriamente voltagem, medidas, compatibilidade e CONTEUDO DA EMBALAGEM). QUANDO O BRIEFING TROUXER OS ATRIBUTOS DA CATEGORIA DO MERCADO LIVRE, a ficha tecnica do bloco do Mercado Livre comeca por TODOS os atributos obrigatorios, com os nomes exatos e na ordem em que vieram, depois os opcionais que couberem, e so entao o resto. Onde o atributo tiver lista de valores aceitos, use EXATAMENTE um valor da lista; onde nao houver como saber, escreva [CONFIRMAR]. Nunca invente valor de atributo: atributo errado derruba o anuncio do catalogo.
 BULLETS:
 - um por linha (obrigatorio na Amazon, 5 bullets; nos outros canais so quando fizer sentido)
 CARACTERISTICAS DESTACADAS: escreva SOMENTE no bloco do Mercado Livre; nos outros canais escreva "-". EXATAMENTE 7 frases, uma por linha, cada uma com NO MAXIMO 120 caracteres, terminando com a contagem entre parenteses. Cada frase precisa carregar, ao mesmo tempo, UMA palavra-chave que o comprador digita na busca e UM atributo real da categoria - e por isso elas indexam, nao so informam. Elas vao no campo "O que os compradores devem saber" da pagina de CATALOGO do ML, que e compartilhada com todos os vendedores do mesmo produto. Por isso: PROIBIDO citar qualquer marca, inclusive a nossa; proibido preco, frete, garantia, prazo, promocao, estoque ou qualquer condicao de venda; proibido comparar com concorrente ou citar marca de terceiro; proibido adjetivo de propaganda e alegacao de saude. So fato verificavel do produto, frase completa terminada em ponto e NUNCA cortada no meio. Mire de 95 a 118 caracteres em cada uma para aproveitar o espaco sem estourar o limite. ORDEM OBRIGATORIA: 1) compatibilidade e requisitos de uso; 2) o que vem na caixa, item por item, com as medidas; 3) material, revestimento e acabamento; 4) seguranca e modo de usar; 5) limpeza e conservacao. Dado que nao estiver confirmado na ficha entra com [CONFIRMAR] na frente da frase, nunca inventado.
@@ -574,6 +574,98 @@ async function handleSku(request) {
   });
 }
 
+/* ------------------------------------------------------------------
+   CATEGORIA E ATRIBUTOS DO MERCADO LIVRE
+   API publica, sem login e sem chave. Dois passos:
+   1) domain_discovery adivinha a categoria pelo nome do produto
+   2) /categories/{id}/attributes devolve os atributos daquela categoria
+   Devolvo separado o que e obrigatorio do que e opcional, com os
+   valores que o ML aceita, para o anuncio nao inventar valor.
+------------------------------------------------------------------- */
+const ML_API = "https://api.mercadolibre.com";
+
+function moldaAtributo(a) {
+  const o = { id: String(a.id || ""), nome: String(a.name || "") };
+  const vt = String(a.value_type || "");
+  if (vt) o.tipo = vt;
+  if (Array.isArray(a.values) && a.values.length) {
+    o.valores = a.values.map(v => String(v.name || "")).filter(Boolean).slice(0, 20);
+  }
+  if (a.default_unit) o.unidade = String(a.default_unit);
+  if (a.tags && a.tags.allow_variations) o.variacao = true;
+  return o;
+}
+
+async function handleCategoria(request) {
+  const url = new URL(request.url);
+  const q = String(url.searchParams.get("q") || "").trim().slice(0, 200);
+  const forcada = String(url.searchParams.get("cat") || "").trim().slice(0, 20);
+  if (!q && !forcada) return json({ error: "Digite o nome do produto antes de buscar a categoria." }, 400);
+
+  let id = forcada, nome = "", dominio = "", alternativas = [];
+  try {
+    if (!id) {
+      const r = await fetch(ML_API + "/sites/MLB/domain_discovery/search?limit=5&q=" + encodeURIComponent(q));
+      if (!r.ok) return json({ error: "O Mercado Livre não respondeu a busca de categoria (" + r.status + ")." }, 502);
+      const lista = await r.json();
+      if (!Array.isArray(lista) || !lista.length) {
+        return json({ error: "O Mercado Livre não sugeriu categoria para esse nome. Escreva o produto do jeito que o comprador procura, por exemplo 'jogo de panelas antiaderente 12 peças'." }, 404);
+      }
+      id = String(lista[0].category_id || "");
+      nome = String(lista[0].category_name || "");
+      dominio = String(lista[0].domain_name || "");
+      alternativas = lista.slice(1, 4).map(x => ({
+        id: String(x.category_id || ""),
+        nome: String(x.category_name || ""),
+        dominio: String(x.domain_name || "")
+      })).filter(x => x.id);
+    }
+    if (!id) return json({ error: "Não consegui identificar a categoria." }, 404);
+
+    if (!nome) {
+      try {
+        const rc = await fetch(ML_API + "/categories/" + encodeURIComponent(id));
+        if (rc.ok) {
+          const jc = await rc.json();
+          nome = String(jc.name || "");
+          if (Array.isArray(jc.path_from_root)) {
+            dominio = jc.path_from_root.map(p => String(p.name || "")).join(" > ");
+          }
+        }
+      } catch (e) {}
+    }
+
+    const ra = await fetch(ML_API + "/categories/" + encodeURIComponent(id) + "/attributes");
+    if (!ra.ok) return json({ error: "Não consegui ler os atributos da categoria " + id + " (" + ra.status + ")." }, 502);
+    const attrs = await ra.json();
+    if (!Array.isArray(attrs)) return json({ error: "A lista de atributos veio em formato inesperado." }, 502);
+
+    const ehObrig = a => !!(a.tags && (a.tags.required || a.tags.catalog_required || a.tags.conditional_required));
+    /* fora: campos internos do ML (Tags vertical, AGID, Numero da DI, Nome na nota
+       fiscal) - todos vem marcados como hidden ou read_only - e os que nao descrevem
+       o produto. Se sobrassem, entupiriam a ficha tecnica com campo que nao vende. */
+    const ehLixo = a => {
+      const t = a.tags || {};
+      if (t.hidden || t.read_only) return true;
+      const n = String(a.id || "").toUpperCase();
+      return n === "ITEM_CONDITION" || n === "EMPTY_GTIN_REASON";
+    };
+    const uteis = attrs.filter(a => a && a.id && a.name && !ehLixo(a));
+    const obrigatorios = uteis.filter(ehObrig).map(moldaAtributo);
+    const opcionais = uteis.filter(a => !ehObrig(a)).map(moldaAtributo).slice(0, 30);
+
+    return json({
+      categoria: { id, nome, caminho: dominio },
+      alternativas,
+      obrigatorios,
+      opcionais,
+      total: uteis.length
+    });
+  } catch (e) {
+    return json({ error: "Não consegui falar com o Mercado Livre: " + e }, 502);
+  }
+}
+
 async function handleArquivar(request) {
   let b;
   try { b = await request.json(); } catch (e) { return json({ error: "JSON inválido." }, 400); }
@@ -685,6 +777,9 @@ export default {
     if (url.pathname === "/api/analisar" && request.method === "POST") {
       return handleAnalisar(request, env);
     }
+    if (url.pathname === "/api/categoria" && request.method === "GET") {
+      return await handleCategoria(request);
+    }
     if (url.pathname === "/api/sku" && request.method === "GET") {
       return handleSku(request);
     }
@@ -744,6 +839,9 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <div class="g2"><div class="field"><label>SKU</label><input id="sku" placeholder="FER-0053"></div><div class="field"><label>&nbsp;</label><button id="bsku" class="btn btn-p" style="width:100%">🔎 Buscar na planilha</button></div></div>
   <div id="skuout" style="display:none;font-size:.85rem;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:8px;margin-top:8px"></div>
   <div class="g2" style="margin-top:12px"><div class="field"><label>Nome <span class="req">*</span></label><input id="nome" placeholder="Panela de Pressão 4,2L"></div><div class="field"><label>Marca</label><input id="marca" value="Sayonara"></div></div>
+  <div class="g2" style="margin-top:2px"><div class="field"><label>Categoria no Mercado Livre</label><input id="cat" placeholder="Jogo de Panelas"></div><div class="field"><label>&nbsp;</label><button id="bcat" class="btn btn-p" style="width:100%">🏷️ Buscar categoria e atributos</button></div></div>
+  <p class="hint" style="margin:0 0 10px">Pergunto ao Mercado Livre qual é a categoria e trago os atributos que ela exige. Eles entram na ficha técnica do anúncio, com os nomes que o ML usa.</p>
+  <div id="catout" style="display:none;font-size:.85rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:8px;margin-bottom:10px"></div>
   <div class="field"><label>Medidas</label><input id="med" placeholder="43 x 33 x 35 cm"><p class="hint" style="margin:6px 0 0">Vai junto para o STUDIO e enche o Contrato de medidas sozinho.</p></div>
   <div id="medask" style="display:none;margin-top:10px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;padding:10px;font-size:.85rem;line-height:1.5"></div>
   <div class="sw" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><label class="switch"><input type="checkbox" id="ct"><span class="sl"></span></label><span style="font-size:.85rem"><strong>É refil / compatível</strong> com outra marca</span></div>
@@ -810,6 +908,21 @@ function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação
  t+='Nome: '+(v('nome')||'[CONFIRMAR]')+'\n';t+='Marca oficial: '+(c?(v('marcaReal')||'[CONFIRMAR]'):(v('marca')||'Sayonara'))+'\n';
  var _md=v('med');if(_md)t+='Medidas: '+_md+'\n';
  if(c){t+='\nPRODUTO COMPATÍVEL: aplicar Regra de Ouro. Marca real: '+(v('marcaReal')||'[CONFIRMAR]')+'. Compatível com: '+(v('marcaOrig')||'[CONFIRMAR]')+'. Nunca usar "original" para o produto.\n'}
+ if(window.CATINFO&&CATINFO.categoria){
+  t+='\nCATEGORIA NO MERCADO LIVRE: '+CATINFO.categoria.nome+' ('+CATINFO.categoria.id+')';
+  if(CATINFO.categoria.caminho)t+=' | caminho: '+CATINFO.categoria.caminho;
+  t+='\nATRIBUTOS OBRIGATORIOS DESSA CATEGORIA - a FICHA TECNICA do bloco do Mercado Livre precisa trazer TODOS eles, com estes nomes exatos e nesta ordem:\n';
+  CATINFO.obrigatorios.forEach(function(a){
+   t+='- '+a.nome+(a.unidade?' [unidade: '+a.unidade+']':'')+(a.valores&&a.valores.length?' (valores aceitos: '+a.valores.slice(0,14).join(' | ')+')':'')+'\n';
+  });
+  if(CATINFO.opcionais.length){
+   t+='ATRIBUTOS OPCIONAIS que ajudam a indexar - inclua os que couberem no produto:\n';
+   CATINFO.opcionais.slice(0,22).forEach(function(a){
+    t+='- '+a.nome+(a.valores&&a.valores.length?' (valores aceitos: '+a.valores.slice(0,8).join(' | ')+')':'')+'\n';
+   });
+  }
+  t+='REGRA: preencha o que der para deduzir da ficha e das fotos. Onde houver lista de valores aceitos, use EXATAMENTE um dos valores da lista. Onde nao souber, escreva [CONFIRMAR] - nunca invente.\n';
+ }
  var d=v('desc');if(d)t+='\nObservações: '+d+'\n';
  var lm=v('linkMeu'),ls=v('linkSim');if(lm)t+='\nMeu anúncio: '+lm;if(ls)t+='\nSimilar base: '+ls;
  if(!imgs.length)t+='\n(Sem imagem anexada — descreva a aparência ou marque [CONFIRMAR].)';
@@ -901,6 +1014,31 @@ document.getElementById('bsku').onclick=function(){
   h+='<br><span style="color:#64748b">Nome e marca já foram preenchidos abaixo. Custo e preço não aparecem aqui: eles vivem só na planilha.</span>';
   box.innerHTML=h;
  }).catch(function(e){box.innerHTML='⚠️ Falha de rede: '+esc(e)})};
+/* ---- categoria e atributos do Mercado Livre ---- */
+var CATINFO=null;
+function nomesAttr(l){return (l||[]).map(function(a){return a.nome}).join(' · ')}
+function buscarCat(idForcado){
+ var box=document.getElementById('catout');box.style.display='block';
+ var q=(v('nome')||v('cat')||'').trim();
+ if(!idForcado&&!q){box.innerHTML='Escreva o <strong>Nome do produto</strong> aqui em cima (ou busque pelo SKU) antes de procurar a categoria.';return}
+ box.innerHTML='Perguntando ao Mercado Livre…';
+ var alvo=idForcado?('/api/categoria?cat='+encodeURIComponent(idForcado)):('/api/categoria?q='+encodeURIComponent(q));
+ fetch(alvo).then(function(r){return r.json()}).then(function(j){
+  if(j.error){CATINFO=null;box.innerHTML='⚠️ '+esc(j.error);return}
+  CATINFO=j;
+  var ci=document.getElementById('cat');if(ci)ci.value=j.categoria.nome||ci.value;
+  var h='🏷️ <strong>'+esc(j.categoria.nome||'(sem nome)')+'</strong> <span style="color:#64748b">'+esc(j.categoria.id)+'</span>';
+  if(j.categoria.caminho)h+='<br><span style="color:#64748b">'+esc(j.categoria.caminho)+'</span>';
+  h+='<br><strong>'+j.obrigatorios.length+'</strong> atributo(s) obrigatório(s), <strong>'+j.opcionais.length+'</strong> opcional(is) — de '+esc(j.total)+' na categoria.';
+  if(j.obrigatorios.length)h+='<br><span style="color:#4338ca"><strong>Obrigatórios:</strong> '+esc(nomesAttr(j.obrigatorios))+'</span>';
+  if(j.alternativas&&j.alternativas.length){
+   h+='<br><span style="color:#64748b">Não é essa? '+j.alternativas.map(function(a){return '<a href="#" class="altcat" data-cat="'+esc(a.id)+'">'+esc(a.nome)+'</a>'}).join(' · ')+'</span>';
+  }
+  h+='<br><span style="color:#64748b">Isso vai junto no briefing: o anúncio preenche o que der para deduzir do produto e marca [CONFIRMAR] no resto.</span>';
+  box.innerHTML=h;
+  [].forEach.call(box.querySelectorAll('.altcat'),function(a){a.onclick=function(e){e.preventDefault();buscarCat(a.getAttribute('data-cat'))}});
+ }).catch(function(e){CATINFO=null;box.innerHTML='⚠️ Falha de rede: '+esc(e)})}
+document.getElementById('bcat').onclick=function(){buscarCat(null)};
 /* ---- cadastrar na planilha: SEMPRE mostra a linha e espera confirmar ---- */
 var CAD=null;
 document.getElementById('bcad').onclick=function(){
