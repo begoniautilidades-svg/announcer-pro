@@ -870,17 +870,11 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
  <div class="card"><h2>✨ Gerar anúncio</h2><p class="hint">Preencha à esquerda e clique. O texto sai aqui e os prompts de imagem e as cenas de vídeo ficam guardados para o STUDIO. O último anúncio fica salvo neste navegador — ao reabrir o site, ele volta sozinho.</p>
   <button class="btn btn-p" id="go">🚀 Gerar anúncio</button>
   <div class="spin" id="spin">⏳ Criando o anúncio completo… pode levar 2 a 5 min. Não feche a página.</div><p class="hint" id="spinfim" style="display:none;margin:6px 0 0"></p>
+  <details id="crudetails" style="display:none;margin-top:10px"><summary style="cursor:pointer;font-size:.85rem;color:var(--muted)">📄 Ver o texto completo, cru</summary>
   <div id="out" style="display:none"></div>
-  <button class="btn btn-g" id="copy" style="display:none">📎 Copiar tudo</button></div>
- <div class="card" id="studiocard" style="border-color:#F6ABBB;background:#FDEEF1">
-  <h2 style="color:#9E1E3A">🌸 Levar para o STUDIO DONA BEGÔ</h2>
-  <p class="hint"><strong>As imagens e os vídeos são feitos no STUDIO</strong> — com as suas fotos reais, as medidas reais e uma parada para você aprovar antes de cada passo que custa dinheiro. Aqui no ANNOUNCER PRO fica só o texto do anúncio.</p>
-  <div id="stresumo" style="display:none;font-size:.82rem;background:#fff;border:1px solid #F6ABBB;border-radius:8px;padding:8px;margin-bottom:8px;line-height:1.5"></div>
-  <button class="btn" id="gostudio" style="background:#E92C56;color:#fff">Enviar para o STUDIO →</button>
-  <a class="btn btn-g" href="/studio" target="_blank" style="text-decoration:none;text-align:center;display:block">Abrir o STUDIO sem enviar nada</a>
-  <div id="stmsg" style="display:none;font-size:.85rem;margin-top:8px;color:#9E1E3A"></div></div>
- <div class="card" id="canalcard" style="display:none"><h2>📋 Pronto para publicar (por canal)</h2>
-  <p class="hint">Clique no canal, copie campo por campo e cole direto na plataforma.</p>
+  <button class="btn btn-g" id="copy" style="display:none">📎 Copiar tudo</button></details></div>
+ <div class="card" id="canalcard" style="display:none"><h2>📋 Pronto para publicar</h2>
+  <p class="hint">Uma aba por plataforma. Clique no canal, copie campo por campo e cole direto lá. É daqui que você trabalha — o texto cru inteiro fica guardado logo acima, recolhido.</p>
   <div class="chips" id="cchips" style="margin-bottom:10px"></div>
   <div id="cfields"></div>
   <button class="btn btn-g" id="baixar" style="margin-top:10px">⬇️ Baixar tudo (1 arquivo por canal)</button>
@@ -890,6 +884,13 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
    <p class="hint" style="margin-top:8px">Cole aqui o link do script de arquivamento. O passo a passo está no documento <strong>COMO LIGAR O APP AO DRIVE</strong>, na sua pasta ANÚNCIOS SAYONARA.</p>
    <div class="field"><input id="gsurl" placeholder="https://script.google.com/macros/s/..../exec"></div>
    <button class="btn btn-g" id="bgs" style="margin-top:6px">Salvar link</button></details></div>
+ <div class="card" id="studiocard" style="border-color:#F6ABBB;background:#FDEEF1">
+  <h2 style="color:#9E1E3A">🌸 Levar para o STUDIO DONA BEGÔ</h2>
+  <p class="hint"><strong>As imagens e os vídeos são feitos no STUDIO</strong> — com as suas fotos reais, as medidas reais e uma parada para você aprovar antes de cada passo que custa dinheiro. Aqui no ANNOUNCER PRO fica só o texto do anúncio.</p>
+  <div id="stresumo" style="display:none;font-size:.82rem;background:#fff;border:1px solid #F6ABBB;border-radius:8px;padding:8px;margin-bottom:8px;line-height:1.5"></div>
+  <button class="btn" id="gostudio" style="background:#E92C56;color:#fff">Enviar para o STUDIO →</button>
+  <a class="btn btn-g" href="/studio" target="_blank" style="text-decoration:none;text-align:center;display:block">Abrir o STUDIO sem enviar nada</a>
+  <div id="stmsg" style="display:none;font-size:.85rem;margin-top:8px;color:#9E1E3A"></div></div>
 </div>
 <script>
 var imgs=[];
@@ -937,7 +938,7 @@ function montarChips(imgs,cenas){
  r.innerHTML='Guardado para o STUDIO: <strong>'+ni+'</strong> prompt(s) de imagem e <strong>'+nc+'</strong> cena(s) de v\u00eddeo. Clique no bot\u00e3o abaixo para levar tudo junto com as fotos e as medidas.';
 }
 var canais=[];
-var ROT=['TITULO ALTERNATIVO','TITULO','FICHA TECNICA','BULLETS','DESCRICAO','PALAVRAS-CHAVE','ROTEIRO DO VIDEO','OBSERVACOES DO CANAL'];
+var ROT=['TITULO ALTERNATIVO','TITULO','FICHA TECNICA','CARACTERISTICAS DESTACADAS','BULLETS','DESCRICAO','PALAVRAS-CHAVE','ROTEIRO DO VIDEO','OBSERVACOES DO CANAL'];
 function parseCanais(t){var out=[],re=/\[\[CANAL:\s*([^\]]+)\]\]([\s\S]*?)\[\[\/CANAL\]\]/g,m;while((m=re.exec(t||''))){out.push({nome:m[1].trim(),texto:m[2].trim()})}return out}
 function campos(txt){var cur=null,res=[];
  (txt||'').split('\n').forEach(function(l){var hit=null,U=l.toUpperCase();
@@ -1152,10 +1153,10 @@ document.getElementById('go').onclick=function(){
  .then(function(r){return r.json()}).then(function(j){
    btn.disabled=false;spinOff(!!j.result);
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
-   if(j.result){document.getElementById('copy').style.display='block';montarChips(j.imagens||[],j.cenas||[]);montarCanais(j.result);pedirMedidas(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
+   if(j.result){document.getElementById('copy').style.display='block';var _cd=document.getElementById('crudetails');if(_cd)_cd.style.display='block';montarChips(j.imagens||[],j.cenas||[]);montarCanais(j.result);pedirMedidas(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
  }).catch(function(e){btn.disabled=false;spinOff(false);out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
-try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';montarChips(_d.imagens||[],_d.cenas||[]);montarCanais(_d.result)}}}catch(x){}
+try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';var _cd2=document.getElementById('crudetails');if(_cd2)_cd2.style.display='block';montarChips(_d.imagens||[],_d.cenas||[]);montarCanais(_d.result)}}}catch(x){}
 document.getElementById('gostudio').onclick=function(){
  var c=document.getElementById('ct').checked;
  var d={nome:v('nome'),marca:(c?(v('marcaReal')||''):(v('marca')||'Sayonara')),sku:v('sku'),categoria:v('cat'),medidas:v('med'),peso:v('peso'),compat:c,compatCom:v('marcaOrig'),imagens:ULT.imagens||[],cenas:ULT.cenas||[],quando:new Date().toLocaleString('pt-BR')};
