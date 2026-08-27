@@ -17,7 +17,7 @@ REGRAS DA CASA (obrigatórias):
 - REGRA DE OURO DOS COMPATÍVEIS (refil/peça): se o produto for compatível, a marca do anúncio é a marca REAL do produto (nunca a do original); NUNCA use "original" para descrever o produto; título no formato "Refil [Tipo] [Marca real] Compatível com [Marca/Modelo original]"; inclua na descrição o aviso: "Este produto é da marca [MARCA REAL] e é um item COMPATÍVEL/similar. NÃO é o original da [MARCA ORIGINAL]. A marca [MARCA ORIGINAL] é citada apenas para indicar compatibilidade. Todas as marcas pertencem aos seus donos, sem vínculo com a [MARCA REAL]."
 
 REGRAS POR CANAL:
-- Mercado Livre: o padrao da loja e anuncio de CATALOGO - titulo de ATE 120 CARACTERES comecando pela palavra-chave mais buscada + marca + atributos + beneficio principal (use o espaco todo). Anuncio comum (so quando pedido): titulo max 60. Descricao em texto puro, sem preco/contato/link externo. Ficha tecnica completa.
+- Mercado Livre: o padrao da loja e anuncio de CATALOGO - titulo de ATE 120 CARACTERES comecando pela palavra-chave mais buscada + marca + atributos + beneficio principal (use o espaco todo). Anuncio comum (so quando pedido): titulo max 60. Descricao em texto puro, sem preco/contato/link externo. Ficha tecnica completa. Entregue tambem as CARACTERISTICAS DESTACADAS do catalogo (campo "O que os compradores devem saber"): frases de ate 120 caracteres, sem marca nenhuma e sem condicao de venda - o formato exato esta no bloco do canal.
 - Shopee: título ~100 caracteres com sinônimos; descrição escaneável + FAQ.
 - Amazon: título Marca+Modelo+Tipo+atributos, sem preço/promo/emoji; 5 bullets de benefício.
 - Magalu: objetivo, marca+atributos. TikTok Shop: curto e apelativo, vídeo é o rei. Google Shopping: Marca+Produto+Atributo, GTIN importa.
@@ -37,6 +37,7 @@ FICHA TECNICA:
 Campo: valor (uma informacao por linha; inclua obrigatoriamente voltagem, medidas, compatibilidade e CONTEUDO DA EMBALAGEM)
 BULLETS:
 - um por linha (obrigatorio na Amazon, 5 bullets; nos outros canais so quando fizer sentido)
+CARACTERISTICAS DESTACADAS: escreva SOMENTE no bloco do Mercado Livre; nos outros canais escreva "-". EXATAMENTE 7 frases, uma por linha, cada uma com NO MAXIMO 120 caracteres, terminando com a contagem entre parenteses. Cada frase precisa carregar, ao mesmo tempo, UMA palavra-chave que o comprador digita na busca e UM atributo real da categoria - e por isso elas indexam, nao so informam. Elas vao no campo "O que os compradores devem saber" da pagina de CATALOGO do ML, que e compartilhada com todos os vendedores do mesmo produto. Por isso: PROIBIDO citar qualquer marca, inclusive a nossa; proibido preco, frete, garantia, prazo, promocao, estoque ou qualquer condicao de venda; proibido comparar com concorrente ou citar marca de terceiro; proibido adjetivo de propaganda e alegacao de saude. So fato verificavel do produto, frase completa terminada em ponto e NUNCA cortada no meio. Mire de 95 a 118 caracteres em cada uma para aproveitar o espaco sem estourar o limite. ORDEM OBRIGATORIA: 1) compatibilidade e requisitos de uso; 2) o que vem na caixa, item por item, com as medidas; 3) material, revestimento e acabamento; 4) seguranca e modo de usar; 5) limpeza e conservacao. Dado que nao estiver confirmado na ficha entra com [CONFIRMAR] na frente da frase, nunca inventado.
 DESCRICAO:
 texto completo pronto pra colar, ja no formato e no tamanho do canal, incluindo as 3 duvidas mais comuns do comprador respondidas em uma linha cada e os avisos legais obrigatorios
 PALAVRAS-CHAVE: separadas por virgula, misturando essenciais, secundarias e cauda longa
@@ -739,7 +740,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 <div class="container">
 <div>
  <div class="card"><h2>1 · Produto <span class="req">*</span></h2>
-  <p class="hint">Comece pelo <strong>SKU</strong>: eu puxo nome, marca, custo, preço e margem direto do seu PAINEL no Drive. O SKU também vira o nome da pasta no Drive e do arquivo baixado.</p>
+  <p class="hint">Comece pelo <strong>SKU</strong>: eu puxo nome, marca e preço de venda direto do seu PAINEL no Drive. O SKU também vira o nome da pasta no Drive e do arquivo baixado.</p>
   <div class="g2"><div class="field"><label>SKU</label><input id="sku" placeholder="FER-0053"></div><div class="field"><label>&nbsp;</label><button id="bsku" class="btn btn-p" style="width:100%">🔎 Buscar na planilha</button></div></div>
   <div id="skuout" style="display:none;font-size:.85rem;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:8px;margin-top:8px"></div>
   <div class="g2" style="margin-top:12px"><div class="field"><label>Nome <span class="req">*</span></label><input id="nome" placeholder="Panela de Pressão 4,2L"></div><div class="field"><label>Marca</label><input id="marca" value="Sayonara"></div></div>
@@ -749,8 +750,8 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <p class="hint" style="margin:6px 0 0">Liga a Regra de Ouro (protege de bloqueio).</p>
   <div class="compat" id="cb"><div class="g2"><div class="field"><label>Marca REAL do produto</label><input id="marcaReal" placeholder="Hidro Filtros"></div><div class="field"><label>Compatível com (original)</label><input id="marcaOrig" placeholder="IBBL FR600"></div></div></div>
   <details style="margin-top:12px"><summary style="cursor:pointer;font-size:.85rem;color:var(--accent-d);font-weight:700">➕ Cadastrar este produto na planilha</summary>
-   <p class="hint" style="margin-top:8px">Uso o <strong>SKU</strong>, o <strong>Nome</strong> e a <strong>Marca</strong> daqui de cima. Preencha custo e preço. Eu mostro a linha inteira antes e só gravo depois que você clicar em confirmar.</p>
-   <div class="g2"><div class="field"><label>Custo (R$)</label><input id="custoin" placeholder="18,00"></div><div class="field"><label>Preço de venda (R$)</label><input id="precoin" placeholder="38,97"></div></div>
+   <p class="hint" style="margin-top:8px">Uso o <strong>SKU</strong>, o <strong>Nome</strong> e a <strong>Marca</strong> daqui de cima. Preencha o preço de venda. Eu mostro a linha inteira antes e só gravo depois que você clicar em confirmar. O custo não passa por aqui: ele fica só na planilha.</p>
+   <div class="field"><label>Preço de venda (R$)</label><input id="precoin" placeholder="38,97"></div>
    <div class="field"><label>Observações (opcional)</label><input id="obsin" placeholder="ex.: caixa com 3 unidades"></div>
    <button id="bcad" class="btn btn-g" style="margin-top:8px">💾 Salvar na planilha</button>
    <div id="cadout" style="display:none;font-size:.85rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px;margin-top:8px"></div></details>
@@ -897,16 +898,19 @@ document.getElementById('bsku').onclick=function(){
   if(j.nome)document.getElementById('nome').value=j.nome;
   if(j.marca)document.getElementById('marca').value=j.marca;
   var _pc=document.getElementById('preco');if(j.preco&&_pc)_pc.value=j.preco;
-  var h='✅ <strong>'+esc(j.sku)+'</strong> — '+esc(j.nome)+'<br>Custo <strong>R$ '+esc(j.custo||'?')+'</strong> · Venda <strong>R$ '+esc(j.preco||'?')+'</strong> · Margem <strong>R$ '+esc(j.margem||'?')+'</strong>'+(j.pct?' ('+esc(j.pct)+')':'');
+  var h='✅ <strong>'+esc(j.sku)+'</strong> — '+esc(j.nome)+'<br>Venda <strong>R$ '+esc(j.preco||'?')+'</strong>';
   if(j.obs)h+='<br>Obs.: '+esc(j.obs);
-  h+='<br><span style="color:#64748b">Nome e marca já foram preenchidos abaixo. Custo e preço ficam só aqui na tela — não vão para o texto do anúncio.</span>';
+  h+='<br><span style="color:#64748b">Nome e marca já foram preenchidos abaixo. O preço fica só aqui na tela — não vai para o texto do anúncio.</span>';
   box.innerHTML=h;
  }).catch(function(e){box.innerHTML='⚠️ Falha de rede: '+esc(e)})};
 /* ---- cadastrar na planilha: SEMPRE mostra a linha e espera confirmar ---- */
 var CAD=null;
 document.getElementById('bcad').onclick=function(){
  var box=document.getElementById('cadout');box.style.display='block';
- var s=v('sku'),n=v('nome'),m=v('marca'),c=v('custoin'),p=v('precoin'),o=v('obsin');
+ var s=v('sku'),n=v('nome'),m=v('marca'),p=v('precoin'),o=v('obsin');
+ /* custo nao e digitado nem exibido aqui. Devolvo o mesmo valor que veio da planilha
+    para que atualizar um SKU existente nao apague a coluna Custo. */
+ var c=(skuData&&String(skuData.sku||'').toUpperCase()===String(s).toUpperCase())?(skuData.custo||''):'';
  if(!gsUrl()){box.innerHTML='⚙️ Antes cole o link do script do Google lá embaixo, em <strong>Configurar o arquivamento no Drive</strong>. É o mesmo link.';return}
  if(!csvUrl()){box.innerHTML='⚙️ Antes cole o link CSV da planilha logo abaixo, em <strong>Configurar o link da planilha</strong>.';return}
  if(!s){box.innerHTML='Digite o SKU aqui em cima.';return}
@@ -914,9 +918,9 @@ document.getElementById('bcad').onclick=function(){
  CAD={sku:s,produto:n,marca:m,custo:c,preco:p,obs:o};
  var h='📋 <strong>Confira antes de gravar:</strong><br>';
  h+='SKU <strong>'+esc(s)+'</strong> · Produto <strong>'+esc(n)+'</strong><br>';
- h+='Loja/Marca '+esc(m||'(em branco)')+' · Custo R$ '+esc(c||'(em branco)')+' · Venda R$ '+esc(p||'(em branco)')+'<br>';
+ h+='Loja/Marca '+esc(m||'(em branco)')+' · Venda R$ '+esc(p||'(em branco)')+'<br>';
  if(o)h+='Obs.: '+esc(o)+'<br>';
- h+='<span style="color:#92400e">Margem e Margem % a planilha calcula sozinha. Se o SKU já existir, eu atualizo a linha dele em vez de criar outra.</span><br>';
+ h+='<span style="color:#92400e">Se o SKU já existir, eu atualizo a linha dele em vez de criar outra. A coluna Custo da planilha não é alterada por aqui.</span><br>';
  h+='<button class="btn btn-p" id="bcadok" style="margin-top:8px">✅ Confirmar e gravar</button> <button class="btn btn-g" id="bcadno" style="margin-top:8px">Cancelar</button>';
  box.innerHTML=h;
  document.getElementById('bcadno').onclick=function(){box.style.display='none';CAD=null};
@@ -925,7 +929,7 @@ document.getElementById('bcad').onclick=function(){
   fetch('/api/cadastrar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({destino:gsUrl(),csv:csvUrl(),sku:CAD.sku,produto:CAD.produto,marca:CAD.marca,custo:CAD.custo,preco:CAD.preco,obs:CAD.obs})})
   .then(function(r){return r.json()}).then(function(j){
    if(j.error){box.innerHTML='⚠️ '+esc(j.error);return}
-   box.innerHTML='✅ <strong>'+esc(j.sku||CAD.sku)+'</strong> '+(j.novo?'cadastrado':'atualizado')+' na linha '+esc(j.linha||'?')+' da planilha.<br>Custo R$ '+esc(j.custo||'?')+' · Venda R$ '+esc(j.preco||'?')+' · Margem R$ '+esc(j.margem||'?')+(j.pct?' ('+esc(j.pct)+')':'')+'<br><span style="color:#64748b">A busca por SKU pode levar uns minutos pra enxergar (o Google guarda o CSV em cache).</span>';
+   box.innerHTML='✅ <strong>'+esc(j.sku||CAD.sku)+'</strong> '+(j.novo?'cadastrado':'atualizado')+' na linha '+esc(j.linha||'?')+' da planilha.<br>Venda R$ '+esc(j.preco||'?')+'<br><span style="color:#64748b">A busca por SKU pode levar uns minutos pra enxergar (o Google guarda o CSV em cache).</span>';
   }).catch(function(e){box.innerHTML='⚠️ Falha: '+esc(e)});
  };
 };
