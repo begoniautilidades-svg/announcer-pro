@@ -740,7 +740,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 <div class="container">
 <div>
  <div class="card"><h2>1 · Produto <span class="req">*</span></h2>
-  <p class="hint">Comece pelo <strong>SKU</strong>: eu puxo nome, marca e preço de venda direto do seu PAINEL no Drive. O SKU também vira o nome da pasta no Drive e do arquivo baixado.</p>
+  <p class="hint">Comece pelo <strong>SKU</strong>: eu puxo o nome e a marca direto do seu PAINEL no Drive. O SKU também vira o nome da pasta no Drive e do arquivo baixado.</p>
   <div class="g2"><div class="field"><label>SKU</label><input id="sku" placeholder="FER-0053"></div><div class="field"><label>&nbsp;</label><button id="bsku" class="btn btn-p" style="width:100%">🔎 Buscar na planilha</button></div></div>
   <div id="skuout" style="display:none;font-size:.85rem;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;padding:8px;margin-top:8px"></div>
   <div class="g2" style="margin-top:12px"><div class="field"><label>Nome <span class="req">*</span></label><input id="nome" placeholder="Panela de Pressão 4,2L"></div><div class="field"><label>Marca</label><input id="marca" value="Sayonara"></div></div>
@@ -750,8 +750,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <p class="hint" style="margin:6px 0 0">Liga a Regra de Ouro (protege de bloqueio).</p>
   <div class="compat" id="cb"><div class="g2"><div class="field"><label>Marca REAL do produto</label><input id="marcaReal" placeholder="Hidro Filtros"></div><div class="field"><label>Compatível com (original)</label><input id="marcaOrig" placeholder="IBBL FR600"></div></div></div>
   <details style="margin-top:12px"><summary style="cursor:pointer;font-size:.85rem;color:var(--accent-d);font-weight:700">➕ Cadastrar este produto na planilha</summary>
-   <p class="hint" style="margin-top:8px">Uso o <strong>SKU</strong>, o <strong>Nome</strong> e a <strong>Marca</strong> daqui de cima. Preencha o preço de venda. Eu mostro a linha inteira antes e só gravo depois que você clicar em confirmar. O custo não passa por aqui: ele fica só na planilha.</p>
-   <div class="field"><label>Preço de venda (R$)</label><input id="precoin" placeholder="38,97"></div>
+   <p class="hint" style="margin-top:8px">Uso o <strong>SKU</strong>, o <strong>Nome</strong> e a <strong>Marca</strong> daqui de cima. Eu mostro a linha inteira antes e só gravo depois que você clicar em confirmar. <strong>Custo e preço não passam por aqui</strong>: eles ficam só na planilha, preenchidos por você.</p>
    <div class="field"><label>Observações (opcional)</label><input id="obsin" placeholder="ex.: caixa com 3 unidades"></div>
    <button id="bcad" class="btn btn-g" style="margin-top:8px">💾 Salvar na planilha</button>
    <div id="cadout" style="display:none;font-size:.85rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:8px;margin-top:8px"></div></details>
@@ -897,20 +896,22 @@ document.getElementById('bsku').onclick=function(){
   skuData=j;
   if(j.nome)document.getElementById('nome').value=j.nome;
   if(j.marca)document.getElementById('marca').value=j.marca;
-  var _pc=document.getElementById('preco');if(j.preco&&_pc)_pc.value=j.preco;
-  var h='✅ <strong>'+esc(j.sku)+'</strong> — '+esc(j.nome)+'<br>Venda <strong>R$ '+esc(j.preco||'?')+'</strong>';
+  var h='✅ <strong>'+esc(j.sku)+'</strong> — '+esc(j.nome);
   if(j.obs)h+='<br>Obs.: '+esc(j.obs);
-  h+='<br><span style="color:#64748b">Nome e marca já foram preenchidos abaixo. O preço fica só aqui na tela — não vai para o texto do anúncio.</span>';
+  h+='<br><span style="color:#64748b">Nome e marca já foram preenchidos abaixo. Custo e preço não aparecem aqui: eles vivem só na planilha.</span>';
   box.innerHTML=h;
  }).catch(function(e){box.innerHTML='⚠️ Falha de rede: '+esc(e)})};
 /* ---- cadastrar na planilha: SEMPRE mostra a linha e espera confirmar ---- */
 var CAD=null;
 document.getElementById('bcad').onclick=function(){
  var box=document.getElementById('cadout');box.style.display='block';
- var s=v('sku'),n=v('nome'),m=v('marca'),p=v('precoin'),o=v('obsin');
- /* custo nao e digitado nem exibido aqui. Devolvo o mesmo valor que veio da planilha
-    para que atualizar um SKU existente nao apague a coluna Custo. */
- var c=(skuData&&String(skuData.sku||'').toUpperCase()===String(s).toUpperCase())?(skuData.custo||''):'';
+ var s=v('sku'),n=v('nome'),m=v('marca'),o=v('obsin');
+ /* custo e preco nao sao digitados nem exibidos aqui: quem preenche e voce, direto na
+    planilha. Devolvo os mesmos valores que vieram de la para que atualizar um SKU
+    existente nao apague as colunas Custo e Preco de venda. */
+ var mesmo=skuData&&String(skuData.sku||'').toUpperCase()===String(s).toUpperCase();
+ var c=mesmo?(skuData.custo||''):'';
+ var p=mesmo?(skuData.preco||''):'';
  if(!gsUrl()){box.innerHTML='⚙️ Antes cole o link do script do Google lá embaixo, em <strong>Configurar o arquivamento no Drive</strong>. É o mesmo link.';return}
  if(!csvUrl()){box.innerHTML='⚙️ Antes cole o link CSV da planilha logo abaixo, em <strong>Configurar o link da planilha</strong>.';return}
  if(!s){box.innerHTML='Digite o SKU aqui em cima.';return}
@@ -918,9 +919,9 @@ document.getElementById('bcad').onclick=function(){
  CAD={sku:s,produto:n,marca:m,custo:c,preco:p,obs:o};
  var h='📋 <strong>Confira antes de gravar:</strong><br>';
  h+='SKU <strong>'+esc(s)+'</strong> · Produto <strong>'+esc(n)+'</strong><br>';
- h+='Loja/Marca '+esc(m||'(em branco)')+' · Venda R$ '+esc(p||'(em branco)')+'<br>';
+ h+='Loja/Marca '+esc(m||'(em branco)')+'<br>';
  if(o)h+='Obs.: '+esc(o)+'<br>';
- h+='<span style="color:#92400e">Se o SKU já existir, eu atualizo a linha dele em vez de criar outra. A coluna Custo da planilha não é alterada por aqui.</span><br>';
+ h+='<span style="color:#92400e">Se o SKU já existir, eu atualizo a linha dele em vez de criar outra. As colunas Custo e Preço de venda da planilha não são alteradas por aqui.</span><br>';
  h+='<button class="btn btn-p" id="bcadok" style="margin-top:8px">✅ Confirmar e gravar</button> <button class="btn btn-g" id="bcadno" style="margin-top:8px">Cancelar</button>';
  box.innerHTML=h;
  document.getElementById('bcadno').onclick=function(){box.style.display='none';CAD=null};
@@ -929,7 +930,7 @@ document.getElementById('bcad').onclick=function(){
   fetch('/api/cadastrar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({destino:gsUrl(),csv:csvUrl(),sku:CAD.sku,produto:CAD.produto,marca:CAD.marca,custo:CAD.custo,preco:CAD.preco,obs:CAD.obs})})
   .then(function(r){return r.json()}).then(function(j){
    if(j.error){box.innerHTML='⚠️ '+esc(j.error);return}
-   box.innerHTML='✅ <strong>'+esc(j.sku||CAD.sku)+'</strong> '+(j.novo?'cadastrado':'atualizado')+' na linha '+esc(j.linha||'?')+' da planilha.<br>Venda R$ '+esc(j.preco||'?')+'<br><span style="color:#64748b">A busca por SKU pode levar uns minutos pra enxergar (o Google guarda o CSV em cache).</span>';
+   box.innerHTML='✅ <strong>'+esc(j.sku||CAD.sku)+'</strong> '+(j.novo?'cadastrado':'atualizado')+' na linha '+esc(j.linha||'?')+' da planilha.<br><span style="color:#64748b">A busca por SKU pode levar uns minutos pra enxergar (o Google guarda o CSV em cache).</span>';
   }).catch(function(e){box.innerHTML='⚠️ Falha: '+esc(e)});
  };
 };
