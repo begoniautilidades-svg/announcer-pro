@@ -45,6 +45,15 @@ ROTEIRO DO VIDEO: obrigatorio no TikTok Shop (0-3s gancho, 3-8s produto, 8-20s u
 OBSERVACOES DO CANAL: limites, regras e riscos especificos daquele canal, e o que ficou [CONFIRMAR]
 [[/CANAL]]
 Repita o bloco inteiro para cada canal pedido, trocando o nome depois de CANAL:. Esses blocos sao o produto final da ferramenta - eles precisam estar completos e prontos pra colar na plataforma sem edicao. Se faltar dado critico, marque [CONFIRMAR] ali mesmo, dentro do bloco.
+1B. VARIACOES DE KIT - escreva esta secao SOMENTE se o briefing trouxer MODO KIT; caso contrario pule a secao inteira e nao mencione kit em lugar nenhum. O anuncio acima serve para TODAS as quantidades: descricao, bullets, palavras-chave e as demais caracteristicas sao IDENTICAS. So quatro coisas mudam por quantidade: o titulo, a capa, o atributo de quantidade da categoria e a frase do conteudo da caixa. Para CADA quantidade pedida no briefing, entregue um bloco delimitado EXATAMENTE assim, sem nada entre os blocos:
+[[KIT: N]]
+TITULO: titulo completo para essa quantidade, no limite do canal principal, terminando com a contagem de caracteres entre parenteses. A quantidade aparece cedo e escrita como o comprador busca ("Kit 4", "4 Unidades"). Para N=1 nao escreva "kit" nem "1 unidade" - e o anuncio da peca avulsa.
+SKU: o SKU sugerido para essa quantidade, seguindo o padrao do SKU base informado no briefing
+ATRIBUTO DE QUANTIDADE: o nome exato do atributo da categoria e o valor N, no formato "Nome do atributo: N"
+CONTEUDO DA CAIXA: a frase de ate 120 caracteres que SUBSTITUI a do anuncio base, dizendo exatamente quantas unidades vem, sem citar marca e sem condicao de venda
+PROMPT DA CAPA: prompt completo e autonomo em portugues para gerar a capa dessa quantidade. Fundo branco puro, produto centralizado, SEM texto, SEM logo, SEM selo, formato 1:1 para exportar em 1200x1200. Manda usar a FOTO REAL do produto como referencia e manter o produto IDENTICO. Diga o numero de unidades por extenso E em algarismo, por exemplo "exatamente quatro (4) unidades identicas", descreva como elas ficam dispostas no quadro e proiba explicitamente qualquer peca a mais ou a menos, porque gerador de imagem erra quantidade. Ate 700 caracteres.
+[[/KIT]]
+Repita o bloco para cada quantidade, em ordem crescente. NAO repita descricao, bullets nem palavras-chave aqui: sao os mesmos do anuncio acima.
 2. CONTEUDO A+ DA AMAZON E RICH CONTENT DO ML - escreva esta secao SOMENTE se Amazon ou Mercado Livre estiverem entre os canais pedidos; caso contrario pule a secao inteira. Amazon: modulo hero com headline forte, 3 modulos de beneficio (titulo curto + uma frase + sugestao de imagem em meia linha) e uma tabela comparativa curta com os modelos da linha. Mercado Livre: 3 blocos curtos de texto persuasivo + sugestao de banner. LIMITE TOTAL DESTA SECAO: 2.500 caracteres. Nao repita o que ja esta no bloco do canal.
 3. IMAGENS - INDICE APENAS. Nove linhas, uma por arte, no formato "Imagem N - funcao da arte em ate 8 palavras". NAO escreva os prompts aqui: os prompts completos vao SO no bloco ===DADOS=== do final, e o painel ja mostra cada um deles em um botao proprio.
 4. VIDEO - INDICE APENAS. De 2 a 3 linhas, uma por cena, no formato "Cena N (Xs) - o que acontece, em ate 12 palavras", com duracao 4, 8 ou 12 segundos e formato vertical 720x1280. Depois, uma linha com a ordem de montagem para formar o video de 15-30s e uma linha com a sugestao de trilha/ritmo. NAO escreva os prompts aqui: eles vao SO no bloco ===DADOS===. ESTILOS DAS CENAS (padrao obrigatorio, vale para os prompts do JSON): CENA 1 = APRESENTADOR FALANDO - homem brasileiro simpatico ~35 anos, uniforme polo azul (#2F64E0) com logo Sayonara (gota d'agua com telhado de casa) bordado no peito, em cozinha clara e moderna com o produto EXATAMENTE como na foto de referencia sobre a bancada; ele olha para a camera e fala em portugues brasileiro uma fala curta de venda que caiba na duracao (incluir a fala entre aspas dentro do prompt, terminando com o slogan "Sayonara - onde a pureza encontra seu lar" quando couber); sem legendas na tela. CENA 2 = PRODUTO em destaque com demonstracao de uso e close dos diferenciais. CENA 3 = LIFESTYLE - familia/casa brasileira clara usando o produto, luz natural, clima de pureza da marca.
@@ -873,6 +882,14 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <div class="sw" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><label class="switch"><input type="checkbox" id="ct"><span class="sl"></span></label><span style="font-size:.85rem"><strong>É refil / compatível</strong> com outra marca</span></div>
   <p class="hint" style="margin:6px 0 0">Liga a Regra de Ouro (protege de bloqueio).</p>
   <div class="compat" id="cb"><div class="g2"><div class="field"><label>Marca REAL do produto</label><input id="marcaReal" placeholder="Hidro Filtros"></div><div class="field"><label>Compatível com (original)</label><input id="marcaOrig" placeholder="IBBL FR600"></div></div></div>
+  <div class="sw" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><label class="switch"><input type="checkbox" id="kt"><span class="sl"></span></label><span style="font-size:.85rem"><strong>Vendo em mais de uma quantidade</strong> (kit)</span></div>
+  <p class="hint" style="margin:6px 0 0">O anúncio é o mesmo para todas. Só o título, a capa, o atributo de quantidade e a frase do conteúdo da caixa mudam.</p>
+  <div class="compat" id="kb">
+   <label style="font-size:.8rem;display:block;margin-bottom:6px">Quantidades que você vende</label>
+   <div class="chips" id="kqtd" style="margin-bottom:8px"><div class="chip on" data-v="1">1 un</div><div class="chip" data-v="2">2 un</div><div class="chip" data-v="3">3 un</div><div class="chip" data-v="4">4 un</div><div class="chip" data-v="6">6 un</div><div class="chip" data-v="12">12 un</div></div>
+   <div class="field"><label>Outras quantidades (separe por vírgula)</label><input id="kextra" placeholder="8, 10, 24"></div>
+   <div id="kresumo" style="font-size:.85rem;color:var(--accent-d);font-weight:700"></div>
+  </div>
   <details style="margin-top:12px"><summary style="cursor:pointer;font-size:.85rem;color:var(--accent-d);font-weight:700">➕ Cadastrar este produto na planilha</summary>
    <p class="hint" style="margin-top:8px">Uso o <strong>SKU</strong>, o <strong>Nome</strong> e a <strong>Marca</strong> daqui de cima. Eu mostro a linha inteira antes e só gravo depois que você clicar em confirmar. <strong>Custo e preço não passam por aqui</strong>: eles ficam só na planilha, preenchidos por você.</p>
    <div class="field"><label>Observações (opcional)</label><input id="obsin" placeholder="ex.: caixa com 3 unidades"></div>
@@ -911,6 +928,9 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
    <p class="hint" style="margin-top:8px">Cole aqui o link do script de arquivamento. O passo a passo está no documento <strong>COMO LIGAR O APP AO DRIVE</strong>, na sua pasta ANÚNCIOS SAYONARA.</p>
    <div class="field"><input id="gsurl" placeholder="https://script.google.com/macros/s/..../exec"></div>
    <button class="btn btn-g" id="bgs" style="margin-top:6px">Salvar link</button></details></div>
+ <div class="card" id="kitcard" style="display:none"><h2>📦 Variações de kit</h2>
+  <p class="hint">O anúncio acima serve para todas as quantidades. Aqui está o que muda em cada uma: título, SKU, o atributo de quantidade e o prompt da capa daquele número exato de peças.</p>
+  <div id="kitfields"></div></div>
  <div class="card" id="studiocard" style="border-color:#F6ABBB;background:#FDEEF1">
   <h2 style="color:#9E1E3A">🌸 Levar para o STUDIO DONA BEGÔ</h2>
   <p class="hint"><strong>As imagens e os vídeos são feitos no STUDIO</strong> — com as suas fotos reais, as medidas reais e uma parada para você aprovar antes de cada passo que custa dinheiro. Aqui no ANNOUNCER PRO fica só o texto do anúncio.</p>
@@ -931,11 +951,38 @@ function renderThumbs(){th.innerHTML=imgs.map(function(o,i){return '<div class="
 inp.onchange=function(){[].forEach.call(inp.files,function(f){if(imgs.length>=4)return;var r=new FileReader();r.onload=function(){imgs.push({data:r.result.split(',')[1],media:f.type,url:r.result});renderThumbs()};r.readAsDataURL(f)});inp.value='';};
 th.onclick=function(e){if(e.target.dataset&&e.target.dataset.x!==undefined&&e.target.dataset.x!==''){imgs.splice(Number(e.target.dataset.x),1);renderThumbs()}};
 document.getElementById('ct').onchange=function(){document.getElementById('cb').classList.toggle('show',this.checked)};
+/* ---- kit: quantas quantidades, quantas capas ---- */
+cg('kqtd',1);
+function kQtds(){
+ var l=many('kqtd').map(Number);
+ (v('kextra')||'').split(/[^0-9]+/).forEach(function(x){var n=parseInt(x,10);if(n>0)l.push(n)});
+ var vis={},out=[];
+ l.forEach(function(n){if(n>0&&n<=999&&!vis[n]){vis[n]=1;out.push(n)}});
+ return out.sort(function(a,b){return a-b});
+}
+function kResumo(){
+ var r=document.getElementById('kresumo');if(!r)return;
+ if(!document.getElementById('kt').checked){r.textContent='';return}
+ var q=kQtds();
+ if(!q.length){r.textContent='Marque pelo menos uma quantidade.';return}
+ r.textContent='Vão sair '+q.length+' título(s) e '+q.length+' capa(s): '+q.join(', ')+' unidade(s).';
+}
+document.getElementById('kt').onchange=function(){document.getElementById('kb').classList.toggle('show',this.checked);kResumo()};
+document.getElementById('kqtd').addEventListener('click',function(){setTimeout(kResumo,0)});
+document.getElementById('kextra').addEventListener('input',kResumo);
 function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação: '+one('modo')+'\n';t+='Profundidade: '+one('prof')+'\n';t+='Canais: '+(many('canais').join(', ')||'[CONFIRMAR]')+'\n\nPRODUTO:\n';
  var _sk=v('sku');if(_sk)t+='SKU: '+_sk+'\n';
  t+='Nome: '+(v('nome')||'[CONFIRMAR]')+'\n';t+='Marca oficial: '+(c?(v('marcaReal')||'[CONFIRMAR]'):(v('marca')||'Sayonara'))+'\n';
  var _md=v('med');if(_md)t+='Medidas: '+_md+'\n';
  if(c){t+='\nPRODUTO COMPATÍVEL: aplicar Regra de Ouro. Marca real: '+(v('marcaReal')||'[CONFIRMAR]')+'. Compatível com: '+(v('marcaOrig')||'[CONFIRMAR]')+'. Nunca usar "original" para o produto.\n'}
+ if(document.getElementById('kt').checked){
+  var _kq=kQtds();
+  if(_kq.length){
+   t+='\nMODO KIT: o mesmo produto e vendido em '+_kq.length+' quantidade(s): '+_kq.join(', ')+' unidade(s).';
+   var _kb=v('sku'); if(_kb)t+=' SKU base: '+_kb.replace(/-KIT\d+$/i,'')+'.';
+   t+='\nEscreva o anuncio UMA vez e depois a secao VARIACOES DE KIT com um bloco [[KIT: N]] para cada quantidade acima. O corpo do anuncio (descricao, bullets, palavras-chave) e o mesmo para todas.\n';
+  }
+ }
  if(window.CATINFO&&CATINFO.categoria){
   t+='\nCATEGORIA NO MERCADO LIVRE: '+CATINFO.categoria.nome+' ('+CATINFO.categoria.id+')';
   if(CATINFO.categoria.caminho)t+=' | caminho: '+CATINFO.categoria.caminho;
@@ -981,7 +1028,34 @@ function verCanal(i){var c=canais[i],box=document.getElementById('cfields');box.
   var b=document.createElement('button');b.className='btn btn-g';b.style.marginTop='4px';b.textContent='📎 Copiar';
   b.onclick=function(){ta.select();try{document.execCommand('copy')}catch(e){}try{navigator.clipboard.writeText(ta.value)}catch(e){}b.textContent='✅ Copiado!';setTimeout(function(){b.textContent='📎 Copiar'},1500)};
   d.appendChild(h);d.appendChild(ta);d.appendChild(b);box.appendChild(d)})}
-function montarCanais(t){canais=parseCanais(t);
+var KROT=['TITULO','SKU','ATRIBUTO DE QUANTIDADE','CONTEUDO DA CAIXA','PROMPT DA CAPA'];
+function parseKits(t){var out=[],re=/\[\[KIT:\s*([^\]]+)\]\]([\s\S]*?)\[\[\/KIT\]\]/g,m;while((m=re.exec(t||''))){out.push({qtd:m[1].trim(),texto:m[2].trim()})}return out}
+function camposKit(txt){var cur=null,res=[];
+ (txt||'').split('\n').forEach(function(l){var hit=null,U=l.toUpperCase();
+  for(var i=0;i<KROT.length;i++){if(U.indexOf(KROT[i]+':')===0){hit=KROT[i];break}}
+  if(hit){cur={rot:hit,val:l.slice(hit.length+1).trim()};res.push(cur)}
+  else if(cur){cur.val+=(cur.val?'\n':'')+l}});
+ return res.map(function(c){c.val=c.val.trim();return c}).filter(function(c){return c.val&&c.val!=='-'})}
+function montarKits(t){
+ var kits=parseKits(t),card=document.getElementById('kitcard'),box=document.getElementById('kitfields');
+ if(!card||!box)return;
+ box.innerHTML='';
+ if(!kits.length){card.style.display='none';return}
+ card.style.display='block';
+ kits.forEach(function(k){
+  var w=document.createElement('div');w.style.cssText='border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:12px';
+  var h=document.createElement('div');h.style.cssText='font-weight:700;color:var(--accent-d);margin-bottom:8px';h.textContent='Kit de '+k.qtd+' unidade(s)';
+  w.appendChild(h);
+  camposKit(k.texto).forEach(function(f){
+   var d=document.createElement('div');d.style.marginBottom='10px';
+   var r=document.createElement('div');r.style.cssText='font-size:.72rem;font-weight:700;color:#64748b;letter-spacing:.4px;margin-bottom:4px';r.textContent=f.rot;
+   var ta=document.createElement('textarea');ta.value=f.val;ta.style.minHeight=(f.val.length>160?'110px':'42px');
+   var b=document.createElement('button');b.className='btn btn-g';b.style.marginTop='4px';b.textContent='📎 Copiar';
+   b.onclick=function(){ta.select();try{document.execCommand('copy')}catch(e){}try{navigator.clipboard.writeText(ta.value)}catch(e){}b.textContent='✅ Copiado!';setTimeout(function(){b.textContent='📎 Copiar'},1500)};
+   d.appendChild(r);d.appendChild(ta);d.appendChild(b);w.appendChild(d)});
+  box.appendChild(w)});
+}
+function montarCanais(t){canais=parseCanais(t);montarKits(t);
  var card=document.getElementById('canalcard'),cc=document.getElementById('cchips');cc.innerHTML='';
  if(!canais.length){card.style.display='none';return}
  card.style.display='block';
