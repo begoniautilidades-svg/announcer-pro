@@ -414,15 +414,17 @@ q('calc').onclick=function(){
   /* um produto so: nao existe segundo item para comparar, entao a referencia
      e um objeto que todo mundo conhece. Sem isso o botao travava e obrigava a
      inventar um segundo produto so para satisfazer o formulario. */
-  var U=A.h?A:B, nU=U.n||'o produto';
+  /* o nome entra SEM artigo e as frases usam "o produto", que e sempre
+     masculino: assim nao sai "O Taca" nem "apoiado" concordando errado. */
+  var U=A.h?A:B, nU=U.n||'O produto';
   var s1='REGRA DE ESCALA (obrigatória nesta cena, escreva do jeito que está aqui):\n\n';
-  s1+='O '+nU+' mede '+fmt(U.h)+' cm de altura';
+  s1+=nU+' mede '+fmt(U.h)+' cm de altura';
   if(U.w)s1+=' por '+fmt(U.w)+' cm de '+(U.d?'largura':'diâmetro');
   if(U.d)s1+=' por '+fmt(U.d)+' cm de profundidade';
   s1+=' — é '+comparar(U.h)+'.\n\n';
-  s1+='O '+nU+' aparece INTEIRO no enquadramento, apoiado sobre a superfície, em uma única fotografia real com lente 50 mm. ';
+  s1+='O produto aparece INTEIRO no enquadramento, apoiado sobre a superfície, em uma única fotografia real com lente 50 mm. ';
   s1+='Se aparecer pessoa, mão ou qualquer objeto do dia a dia na cena, o tamanho relativo precisa bater com essa medida: '+comparar(U.h)+'. ';
-  s1+='Se na imagem ele parecer muito maior ou muito menor que isso, a imagem está errada e precisa ser refeita.\n\n';
+  s1+='Se na imagem o tamanho parecer muito maior ou muito menor que isso, a imagem está errada e precisa ser refeita.\n\n';
   s1+='Sem colagem, sem montagem, sem foto dentro de foto.';
   q('escTxt').textContent=s1;
   q('escOut').style.display='block';
@@ -430,20 +432,22 @@ q('calc').onclick=function(){
   return;
  }
  if(B.h>A.h){var t=A;A=B;B=t}
- var nA=A.n||'produto maior', nB=B.n||'produto menor';
+ /* nomes sem artigo, e as frases construidas com "de" em vez de "do", que
+    quebra com nome feminino: "a altura do Taca" era o que saia antes. */
+ var nA=A.n||'O produto maior', nB=B.n||'O produto menor';
  var r=A.h/B.h;
  var s='REGRA DE ESCALA (obrigatória nesta cena, escreva do jeito que está aqui):\n\n';
- s+='O '+nA+' mede '+fmt(A.h)+' cm de altura';
+ s+=nA+' mede '+fmt(A.h)+' cm de altura';
  if(A.w)s+=' por '+fmt(A.w)+' cm de largura';
  if(A.d)s+=' por '+fmt(A.d)+' cm de profundidade';
  s+=' — é '+comparar(A.h)+'. ';
- s+='O '+nB+' mede '+fmt(B.h)+' cm de altura';
+ s+=nB+' mede '+fmt(B.h)+' cm de altura';
  if(B.w)s+=' por '+fmt(B.w)+' cm de '+(B.d?'largura':'diâmetro');
  if(B.d)s+=' por '+fmt(B.d)+' cm de profundidade';
  s+=' — é '+comparar(B.h)+'.\n\n';
- s+='PROPORÇÃO FIXA: a altura do '+nA+' é '+porExtenso(r)+' do '+nB+'. ';
- s+='Dito de outro jeito: o '+nB+' ocupa cerca de '+Math.round(100/r)+'% da altura do '+nA+'. ';
- s+='Se na imagem o '+nB+' parecer maior que isso, a imagem está errada e precisa ser refeita.\n\n';
+ s+='PROPORÇÃO FIXA: a altura de '+nA+' é '+porExtenso(r)+' da altura de '+nB+'. ';
+ s+='Dito de outro jeito: '+nB+' ocupa cerca de '+Math.round(100/r)+'% da altura de '+nA+'. ';
+ s+='Se na imagem essa proporção não bater, a imagem está errada e precisa ser refeita.\n\n';
  s+='Os dois produtos aparecem INTEIROS no enquadramento, apoiados na mesma superfície, à MESMA distância da câmera, em uma única fotografia real com lente 50 mm, mesma luz e mesma profundidade de campo. Sem colagem, sem montagem, sem foto dentro de foto.';
  q('escTxt').textContent=s;
  q('escOut').style.display='block';
