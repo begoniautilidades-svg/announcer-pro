@@ -56,13 +56,13 @@ PROMPT DA CAPA: prompt completo e autonomo em portugues para gerar a capa dessa 
 Repita o bloco para cada quantidade, em ordem crescente. NAO repita descricao, bullets nem palavras-chave aqui: sao os mesmos do anuncio acima.
 2. CONTEUDO A+ DA AMAZON E RICH CONTENT DO ML - escreva esta secao SOMENTE se Amazon ou Mercado Livre estiverem entre os canais pedidos; caso contrario pule a secao inteira. Amazon: modulo hero com headline forte, 3 modulos de beneficio (titulo curto + uma frase + sugestao de imagem em meia linha) e uma tabela comparativa curta com os modelos da linha. Mercado Livre: 3 blocos curtos de texto persuasivo + sugestao de banner. LIMITE TOTAL DESTA SECAO: 2.500 caracteres. Nao repita o que ja esta no bloco do canal.
 3. IMAGENS - INDICE APENAS. Nove linhas, uma por arte, no formato "Imagem N - funcao da arte em ate 8 palavras". NAO escreva os prompts aqui: os prompts completos vao SO no bloco ===DADOS=== do final, e o painel ja mostra cada um deles em um botao proprio.
-4. VIDEO - INDICE APENAS. De 2 a 3 linhas, uma por cena, no formato "Cena N (Xs) - o que acontece, em ate 12 palavras", com duracao 4, 8 ou 12 segundos e formato vertical 720x1280. Depois, uma linha com a ordem de montagem para formar o video de 15-30s e uma linha com a sugestao de trilha/ritmo. NAO escreva os prompts aqui: eles vao SO no bloco ===DADOS===. ESTILOS DAS CENAS (padrao obrigatorio, vale para os prompts do JSON): CENA 1 = APRESENTADOR FALANDO - homem brasileiro simpatico ~35 anos, uniforme polo azul (#2F64E0) com logo Sayonara (gota d'agua com telhado de casa) bordado no peito, em cozinha clara e moderna com o produto EXATAMENTE como na foto de referencia sobre a bancada; ele olha para a camera e fala em portugues brasileiro uma fala curta de venda que caiba na duracao (incluir a fala entre aspas dentro do prompt, terminando com o slogan "Sayonara - onde a pureza encontra seu lar" quando couber); sem legendas na tela. CENA 2 = PRODUTO em destaque com demonstracao de uso e close dos diferenciais. CENA 3 = LIFESTYLE - familia/casa brasileira clara usando o produto, luz natural, clima de pureza da marca.
+4. VIDEO - INDICE APENAS. De 2 a 3 linhas, uma por cena, no formato "Cena N (Xs) - o que acontece, em ate 12 palavras", com duracao 4, 8 ou 12 segundos e formato vertical 720x1280. Depois, uma linha com a ordem de montagem para formar o video de 15-30s e uma linha com a sugestao de trilha/ritmo. NAO escreva os prompts aqui: eles vao SO no bloco ===DADOS===. ESTILOS DAS CENAS (padrao obrigatorio, vale para os prompts do JSON): CENA 1 = APRESENTADOR FALANDO - pessoa brasileira simpatica de uns 35 anos, uniforme polo azul (#2F64E0) com logo Sayonara (gota d'agua com telhado de casa) bordado no peito, em cozinha clara e moderna com o produto EXATAMENTE como na foto de referencia sobre a bancada. QUEM APRESENTA: o briefing traz a linha APRESENTADOR DO VIDEO e ela manda. Se vier "mulher", escreva no prompt uma MULHER brasileira; se vier "homem", um HOMEM brasileiro; se vier "pelo produto", decida pelo que esta sendo vendido - utilidade domestica (panela, taca, copo, pote, organizador, lixeira, utensilio de cozinha, mesa posta, limpeza) sai com MULHER, porque e quem compra e quem usa; purificador de agua, refil, filtro, torneira e aquecedor saem com HOMEM. Escreva o genero por extenso dentro do prompt e mantenha o mesmo genero nas tres cenas. A pessoa olha para a camera e fala em portugues brasileiro uma fala curta de venda que caiba na duracao (incluir a fala entre aspas dentro do prompt, terminando com o slogan "Sayonara - onde a pureza encontra seu lar" quando couber); sem legendas na tela. CENA 2 = PRODUTO em destaque com demonstracao de uso e close dos diferenciais. CENA 3 = LIFESTYLE - familia/casa brasileira clara usando o produto, luz natural, clima de pureza da marca.
 5. NOTA FINAL 0-100 + plano de melhoria em ate 5 itens de uma linha cada. LIMITE: 1.200 caracteres.
 6. ESTRATEGIA COMERCIAL (so no modo completo) - preco, kit, sazonalidade e concorrencia, em ate 6 itens de uma linha cada. LIMITE: 1.200 caracteres.
 
 PRIORIDADE DE ESPACO: se a resposta ficar longa, RESUMA as secoes 2, 5 e 6 para GARANTIR que os blocos [[CANAL]] e o bloco ===DADOS=== saiam completos. Esses dois nunca podem faltar.
 
-OBRIGATORIO EM TODOS OS MODOS (inclusive Rapido): termine a resposta com uma linha contendo exatamente ===DADOS=== e, na linha seguinte, um JSON valido em UMA unica linha no formato {"imagens":["prompt completo da imagem 1","prompt da imagem 2"],"cenas":[{"seg":"8","prompt":"prompt completo da cena 1"}]} - "imagens" com ate 9 itens (minimo 3), "cenas" com 2 a 3 itens, "seg" apenas "4", "8" ou "12". Este JSON e o UNICO lugar onde os prompts aparecem por extenso: cada prompt precisa ser completo e autonomo (em portugues, descrevendo produto, cena, movimento de camera, luz, estilo, a paleta Sayonara e os numeros da regra de escala quando houver refil ou purificador), pronto pra colar sem edicao. LIMITE: ate 700 caracteres por prompt de imagem e ate 900 por prompt de cena - corte adjetivo e repeticao, nunca os numeros das medidas. Nada depois do JSON.`;
+OBRIGATORIO EM TODOS OS MODOS (inclusive Rapido): termine a resposta com uma linha contendo exatamente ===DADOS=== e, na linha seguinte, um JSON valido em UMA unica linha no formato {"imagens":["prompt completo da imagem 1","prompt da imagem 2"],"cenas":[{"seg":"8","prompt":"prompt completo da cena 1"}],"studio":{"diferencial":"","conteudo":"","comparacao":"","passos":["",""],"kit":false}} - "imagens" com ate 9 itens (minimo 3), "cenas" com 2 a 3 itens, "seg" apenas "4", "8" ou "12". O objeto "studio" preenche a ficha do STUDIO e sai do que voce ja escreveu no anuncio, sem inventar nada: "diferencial" e o diferencial que DA PARA VER numa foto, em uma frase, so o que aparece na imagem (vazao, certificado e garantia nao entram); "conteudo" e o que vem na caixa item por item, em uma linha; "comparacao" e a cena do dia a dia SEM o produto, para a foto de comparacao - descreva so a cena, nunca escreva "antes" nem "depois"; "passos" sao de 2 a 4 etapas de uso, uma por item, cada uma uma acao visivel comecando por maos ou pela pessoa; "kit" e true quando vem mais de uma peca na caixa. Onde faltar dado, escreva [CONFIRMAR] no lugar em vez de inventar. Este JSON e o UNICO lugar onde os prompts aparecem por extenso: cada prompt precisa ser completo e autonomo (em portugues, descrevendo produto, cena, movimento de camera, luz, estilo, a paleta Sayonara e os numeros da regra de escala quando houver refil ou purificador), pronto pra colar sem edicao. LIMITE: ate 700 caracteres por prompt de imagem e ate 900 por prompt de cena - corte adjetivo e repeticao, nunca os numeros das medidas. Nada depois do JSON.`;
 
 /* ------------------------------------------------------------------
    ESFORCO E TETO DE TOKENS
@@ -143,7 +143,7 @@ async function handleGenerate(request, env) {
     }
   }
   text = text.trim();
-  let imagens = [], cenas = [];
+  let imagens = [], cenas = [], estudio = null;
   const mi = text.indexOf("===DADOS===");
   if (mi > -1) {
     const tail = text.slice(mi + 11);
@@ -151,6 +151,15 @@ async function handleGenerate(request, env) {
       const dj = JSON.parse(tail.slice(tail.indexOf("{"), tail.lastIndexOf("}") + 1));
       if (Array.isArray(dj.imagens)) imagens = dj.imagens.map(String).slice(0, 9);
       if (Array.isArray(dj.cenas)) cenas = dj.cenas.slice(0, 4).map(function (c) { return { seg: String(c.seg || "8"), prompt: String(c.prompt || "") }; });
+      if (dj.studio && typeof dj.studio === "object") {
+        estudio = {
+          diferencial: String(dj.studio.diferencial || "").slice(0, 600),
+          conteudo: String(dj.studio.conteudo || "").slice(0, 600),
+          comparacao: String(dj.studio.comparacao || "").slice(0, 600),
+          passos: (Array.isArray(dj.studio.passos) ? dj.studio.passos : []).map(String).slice(0, 4),
+          kit: !!dj.studio.kit
+        };
+      }
     } catch (e) {}
     text = text.slice(0, mi).trim();
   }
@@ -160,7 +169,7 @@ async function handleGenerate(request, env) {
   } else if (!imagens.length) {
     aviso = "Este anuncio saiu SEM os prompts de imagem para o STUDIO. O texto esta ai, mas o STUDIO vai abrir vazio. Vale gerar de novo.";
   }
-  return json({ result: text, imagens: imagens, cenas: cenas, aviso: aviso });
+  return json({ result: text, imagens: imagens, cenas: cenas, studio: estudio, aviso: aviso });
 }
 
 function erroOpenAI(status, t) {
@@ -907,6 +916,8 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
  <div class="card"><h2>4 · Canais e tipo de trabalho</h2>
   <label>Canais</label><div class="chips" id="canais" style="margin-bottom:12px"><div class="chip on" data-v="Mercado Livre">Mercado Livre</div><div class="chip" data-v="Shopee">Shopee</div><div class="chip on" data-v="Amazon">Amazon</div><div class="chip" data-v="Magalu">Magalu</div><div class="chip" data-v="TikTok Shop">TikTok Shop</div><div class="chip" data-v="Google Shopping">Google Shopping</div></div>
   <label>Profundidade</label><div class="chips" id="prof" style="margin-bottom:12px"><div class="chip on" data-v="Pacote completo">Completo</div><div class="chip" data-v="Rápido">Rápido</div></div>
+  <label>Quem apresenta o vídeo</label><div class="chips" id="apres" style="margin-bottom:4px"><div class="chip on" data-v="auto">Pelo produto</div><div class="chip" data-v="mulher">Mulher</div><div class="chip" data-v="homem">Homem</div></div>
+  <p class="hint" style="margin:0 0 12px">Em <strong>Pelo produto</strong>: utilidade doméstica sai com apresentadora mulher; purificador, refil e filtro saem com apresentador homem.</p>
   <label>O que vamos fazer</label><div class="chips" id="modo"><div class="chip on" data-v="Criar anúncio novo">Criar novo</div><div class="chip" data-v="Otimizar existente">Otimizar</div><div class="chip" data-v="Replicar em outra cor/variação">Replicar cor</div><div class="chip" data-v="Adaptar para outro canal">Adaptar canal</div></div></div>
 </div>
 <div class="side">
@@ -942,7 +953,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 <script>
 var imgs=[];
 function cg(id,m){var g=document.getElementById(id);g.onclick=function(e){var c=e.target.closest('.chip');if(!c)return;if(m)c.classList.toggle('on');else{[].forEach.call(g.children,function(x){x.classList.remove('on')});c.classList.add('on')}}}
-cg('modo',0);cg('canais',1);cg('prof',0);
+cg('modo',0);cg('canais',1);cg('prof',0);cg('apres',0);
 function one(id){var e=document.querySelector('#'+id+' .chip.on');return e?e.dataset.v:''}
 function many(id){return[].map.call(document.querySelectorAll('#'+id+' .chip.on'),function(x){return x.dataset.v})}
 function v(id){var e=document.getElementById(id);return e?e.value.trim():''}
@@ -970,7 +981,7 @@ function kResumo(){
 document.getElementById('kt').onchange=function(){document.getElementById('kb').classList.toggle('show',this.checked);kResumo()};
 document.getElementById('kqtd').addEventListener('click',function(){setTimeout(kResumo,0)});
 document.getElementById('kextra').addEventListener('input',kResumo);
-function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação: '+one('modo')+'\n';t+='Profundidade: '+one('prof')+'\n';t+='Canais: '+(many('canais').join(', ')||'[CONFIRMAR]')+'\n\nPRODUTO:\n';
+function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação: '+one('modo')+'\n';t+='Profundidade: '+one('prof')+'\n';t+='Canais: '+(many('canais').join(', ')||'[CONFIRMAR]')+'\n';t+='APRESENTADOR DO VIDEO: '+({auto:'pelo produto',mulher:'mulher',homem:'homem'}[one('apres')]||'pelo produto')+'\n\nPRODUTO:\n';
  var _sk=v('sku');if(_sk)t+='SKU: '+_sk+'\n';
  t+='Nome: '+(v('nome')||'[CONFIRMAR]')+'\n';t+='Marca oficial: '+(c?(v('marcaReal')||'[CONFIRMAR]'):(v('marca')||'Sayonara'))+'\n';
  var _md=v('med');if(_md)t+='Medidas: '+_md+'\n';
@@ -1002,9 +1013,9 @@ function brief(){var c=document.getElementById('ct').checked;var t='';t+='Ação
  var lm=v('linkMeu'),ls=v('linkSim');if(lm)t+='\nMeu anúncio: '+lm;if(ls)t+='\nSimilar base: '+ls;
  if(!imgs.length)t+='\n(Sem imagem anexada — descreva a aparência ou marque [CONFIRMAR].)';
  return t}
-var ULT={imagens:[],cenas:[]};
-function montarChips(imgs,cenas){
- ULT.imagens=imgs||[];ULT.cenas=cenas||[];
+var ULT={imagens:[],cenas:[],studio:null};
+function montarChips(imgs,cenas,est){
+ ULT.imagens=imgs||[];ULT.cenas=cenas||[];if(est!==undefined)ULT.studio=est||null;
  var r=document.getElementById('stresumo');if(!r)return;
  var ni=ULT.imagens.length,nc=ULT.cenas.length;
  if(!ni&&!nc){r.style.display='none';r.innerHTML='';return}
@@ -1256,13 +1267,13 @@ document.getElementById('go').onclick=function(){
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
    var _av=document.getElementById('geraviso');
    if(_av){_av.style.display=j.aviso?'block':'none';_av.textContent=j.aviso?('\u26a0\ufe0f '+j.aviso):''}
-   if(j.result){document.getElementById('copy').style.display='block';var _cd=document.getElementById('crudetails');if(_cd)_cd.style.display='block';montarChips(j.imagens||[],j.cenas||[]);montarCanais(j.result);pedirMedidas(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
+   if(j.result){document.getElementById('copy').style.display='block';var _cd=document.getElementById('crudetails');if(_cd)_cd.style.display='block';montarChips(j.imagens||[],j.cenas||[],j.studio||null);montarCanais(j.result);pedirMedidas(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[],studio:j.studio||null}))}catch(x){}}
  }).catch(function(e){btn.disabled=false;spinOff(false);out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
-try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';var _cd2=document.getElementById('crudetails');if(_cd2)_cd2.style.display='block';montarChips(_d.imagens||[],_d.cenas||[]);montarCanais(_d.result)}}}catch(x){}
+try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';var _cd2=document.getElementById('crudetails');if(_cd2)_cd2.style.display='block';montarChips(_d.imagens||[],_d.cenas||[],_d.studio||null);montarCanais(_d.result)}}}catch(x){}
 document.getElementById('gostudio').onclick=function(){
  var c=document.getElementById('ct').checked;
- var d={nome:v('nome'),marca:(c?(v('marcaReal')||''):(v('marca')||'Sayonara')),sku:v('sku'),categoria:v('cat'),medidas:v('med'),kits:(document.getElementById('kt').checked?kQtds():[]),peso:v('peso'),compat:c,compatCom:v('marcaOrig'),imagens:ULT.imagens||[],cenas:ULT.cenas||[],quando:new Date().toLocaleString('pt-BR')};
+ var d={nome:v('nome'),marca:(c?(v('marcaReal')||''):(v('marca')||'Sayonara')),sku:v('sku'),categoria:v('cat'),medidas:v('med'),kits:(document.getElementById('kt').checked?kQtds():[]),peso:v('peso'),compat:c,compatCom:v('marcaOrig'),imagens:ULT.imagens||[],cenas:ULT.cenas||[],studio:ULT.studio||null,quando:new Date().toLocaleString('pt-BR')};
  var m=document.getElementById('stmsg');m.style.display='block';
  if(!d.nome&&!d.cenas.length){m.textContent='Preencha ao menos o nome do produto (ou gere o an\u00fancio) antes de enviar.';return}
  try{localStorage.setItem('db_studio_entrada',JSON.stringify(d))}catch(e){m.textContent='N\u00e3o consegui guardar os dados neste navegador.';return}
