@@ -55,6 +55,20 @@ PRIORIDADE DE ESPACO: se a resposta ficar longa, RESUMA as secoes 2, 5 e 6 para 
 
 OBRIGATORIO EM TODOS OS MODOS (inclusive Rapido): termine a resposta com uma linha contendo exatamente ===DADOS=== e, na linha seguinte, um JSON valido em UMA unica linha no formato {"imagens":["prompt completo da imagem 1","prompt da imagem 2"],"cenas":[{"seg":"8","prompt":"prompt completo da cena 1"}]} - "imagens" com ate 9 itens (minimo 3), "cenas" com 2 a 3 itens, "seg" apenas "4", "8" ou "12". Este JSON e o UNICO lugar onde os prompts aparecem por extenso: cada prompt precisa ser completo e autonomo (em portugues, descrevendo produto, cena, movimento de camera, luz, estilo, a paleta Sayonara e os numeros da regra de escala quando houver refil ou purificador), pronto pra colar sem edicao. LIMITE: ate 700 caracteres por prompt de imagem e ate 900 por prompt de cena - corte adjetivo e repeticao, nunca os numeros das medidas. Nada depois do JSON.`;
 
+/* ------------------------------------------------------------------
+   ESFORCO E TETO DE TOKENS
+   O Sonnet 5 pensa por padrao no nivel "high". Esse pensamento e cobrado
+   como saida E conta dentro do max_tokens. Sem controlar isso, duas coisas
+   quebram em silencio: a resposta longa e cortada no meio - foi o que comeu
+   o bloco ===DADOS=== e deixou o STUDIO sem prompt de imagem - e as chamadas
+   curtas podem voltar VAZIAS, porque o pensamento consome o orcamento
+   inteiro antes de escrever a primeira letra. Por isso, esforco explicito em
+   toda chamada e teto com folga. Teto alto nao custa nada: cobra-se o que
+   foi usado, nao o que foi reservado.
+------------------------------------------------------------------- */
+const ESFORCO_ANUNCIO = { effort: "medium" };   // texto que vende: qualidade importa
+const ESFORCO_AUXILIAR = { effort: "low" };     // reescrever prompt, resumir: tarefa simples
+
 async function handleGenerate(request, env) {
   if (!env.ANTHROPIC_API_KEY) {
     return json({ error: "Falta configurar ANTHROPIC_API_KEY no Cloudflare (Settings > Variables and Secrets)." }, 500);
@@ -77,7 +91,8 @@ async function handleGenerate(request, env) {
 
   const payload = {
     model: env.MODEL || "claude-3-5-sonnet-latest",
-    max_tokens: 14000,
+    max_tokens: 32000,
+    output_config: ESFORCO_ANUNCIO,
     stream: true,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content }]
@@ -98,6 +113,7 @@ async function handleGenerate(request, env) {
     return json({ error: "Erro da API do Claude (" + r.status + "): " + t.slice(0, 500) }, 502);
   }
   let text = "";
+  let parada = "";
   const reader = r.body.getReader();
   const dec = new TextDecoder();
   let buf = "";
@@ -112,6 +128,7 @@ async function handleGenerate(request, env) {
         try {
           const ev = JSON.parse(ln.slice(6));
           if (ev.type === "content_block_delta" && ev.delta && ev.delta.text) text += ev.delta.text;
+          if (ev.type === "message_delta" && ev.delta && ev.delta.stop_reason) parada = String(ev.delta.stop_reason);
         } catch (e) {}
       }
     }
@@ -128,7 +145,13 @@ async function handleGenerate(request, env) {
     } catch (e) {}
     text = text.slice(0, mi).trim();
   }
-  return json({ result: text, imagens: imagens, cenas: cenas });
+  let aviso = "";
+  if (parada === "max_tokens") {
+    aviso = "A resposta bateu no teto de tokens e foi CORTADA antes do fim. O que veio esta abaixo, mas pode faltar pedaco - inclusive os prompts de imagem do STUDIO. Gere de novo com menos canais ou no modo Rapido.";
+  } else if (!imagens.length) {
+    aviso = "Este anuncio saiu SEM os prompts de imagem para o STUDIO. O texto esta ai, mas o STUDIO vai abrir vazio. Vale gerar de novo.";
+  }
+  return json({ result: text, imagens: imagens, cenas: cenas, aviso: aviso });
 }
 
 function erroOpenAI(status, t) {
@@ -223,7 +246,8 @@ async function handleFix(request, env) {
     headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: env.MODEL || "claude-3-5-sonnet-latest",
-      max_tokens: 1200,
+      max_tokens: 4000,
+      output_config: ESFORCO_AUXILIAR,
       system: "Voce reescreve prompts de geracao de " + tipo + " por IA. Receba o prompt original e o ajuste pedido e devolva SOMENTE o novo prompt completo reescrito, em portugues, sem comentarios nem markdown, mantendo tudo que nao foi pedido para mudar.",
       messages: [{ role: "user", content: "PROMPT ORIGINAL:\n" + promptOrig + "\n\nAJUSTE PEDIDO:\n" + ajuste }]
     })
@@ -272,7 +296,8 @@ async function handleAnalisar(request, env) {
     headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: env.MODEL || "claude-3-5-sonnet-latest",
-      max_tokens: 2500,
+      max_tokens: 8000,
+      output_config: ESFORCO_AUXILIAR,
       system: sys,
       messages: [{ role: "user", content: partes }]
     })
@@ -309,7 +334,8 @@ async function claudeTexto(env, sys, user, maxTok) {
     headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: env.MODEL || "claude-3-5-sonnet-latest",
-      max_tokens: maxTok || 2500,
+      max_tokens: (maxTok || 2500) * 3,
+      output_config: ESFORCO_AUXILIAR,
       system: sys,
       messages: [{ role: "user", content: [{ type: "text", text: user }] }]
     })
@@ -870,6 +896,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
  <div class="card"><h2>✨ Gerar anúncio</h2><p class="hint">Preencha à esquerda e clique. O texto sai aqui e os prompts de imagem e as cenas de vídeo ficam guardados para o STUDIO. O último anúncio fica salvo neste navegador — ao reabrir o site, ele volta sozinho.</p>
   <button class="btn btn-p" id="go">🚀 Gerar anúncio</button>
   <div class="spin" id="spin">⏳ Criando o anúncio completo… pode levar 2 a 5 min. Não feche a página.</div><p class="hint" id="spinfim" style="display:none;margin:6px 0 0"></p>
+  <div id="geraviso" style="display:none;font-size:.85rem;background:#FFF7ED;border:1px solid #FDBA74;border-radius:8px;padding:10px;margin-top:10px;line-height:1.5"></div>
   <details id="crudetails" style="display:none;margin-top:10px"><summary style="cursor:pointer;font-size:.85rem;color:var(--muted)">📄 Ver o texto completo, cru</summary>
   <div id="out" style="display:none"></div>
   <button class="btn btn-g" id="copy" style="display:none">📎 Copiar tudo</button></details></div>
@@ -1153,6 +1180,8 @@ document.getElementById('go').onclick=function(){
  .then(function(r){return r.json()}).then(function(j){
    btn.disabled=false;spinOff(!!j.result);
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
+   var _av=document.getElementById('geraviso');
+   if(_av){_av.style.display=j.aviso?'block':'none';_av.textContent=j.aviso?('\u26a0\ufe0f '+j.aviso):''}
    if(j.result){document.getElementById('copy').style.display='block';var _cd=document.getElementById('crudetails');if(_cd)_cd.style.display='block';montarChips(j.imagens||[],j.cenas||[]);montarCanais(j.result);pedirMedidas(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[]}))}catch(x){}}
  }).catch(function(e){btn.disabled=false;spinOff(false);out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
