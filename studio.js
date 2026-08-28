@@ -99,10 +99,11 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
 
  <div class="card">
   <h2>Contrato de medidas</h2>
-  <p>É aqui que se resolve o erro que mais aparece: o refil sair do tamanho do purificador. A IA não entende centímetro — ela entende comparação escrita. Preencha as alturas reais e copie a frase pronta para dentro de qualquer prompt de imagem ou de vídeo. A ordem não importa: eu descubro sozinho qual é o maior.</p>
+  <p>A IA não entende centímetro — ela entende comparação escrita. Preencha a altura real e copie a frase pronta para dentro de qualquer prompt de imagem ou de vídeo.</p>
+  <p><strong>Produto sozinho:</strong> preencha só o seu produto, ali na direita. Eu comparo com um objeto que todo mundo conhece. <strong>Dois produtos juntos na mesma foto</strong> (um refil e o purificador, por exemplo): preencha os dois e eu escrevo a proporção entre eles. A ordem não importa, descubro sozinho qual é o maior.</p>
   <div class="g2">
    <div>
-    <div class="field"><label>Produto A</label><input id="mA" placeholder="Purificador IBBL FR600"></div>
+    <div class="field"><label>Outro produto na mesma foto <span style="font-weight:400;opacity:.7">(opcional)</span></label><input id="mA" placeholder="só se dois aparecem juntos"></div>
     <div class="g3">
      <div class="field"><label>Altura cm</label><input id="hA" inputmode="decimal" placeholder="43"></div>
      <div class="field"><label>Largura cm</label><input id="wA" inputmode="decimal" placeholder="33"></div>
@@ -110,10 +111,10 @@ textarea{min-height:110px;resize:vertical;line-height:1.5}
     </div>
    </div>
    <div>
-    <div class="field"><label>Produto B</label><input id="mB" placeholder="Refil SAYO S+3"></div>
+    <div class="field"><label>O seu produto</label><input id="mB" placeholder="Taça Vidro Orbe Rosa 400 ml"></div>
     <div class="g3">
-     <div class="field"><label>Altura cm</label><input id="hB" inputmode="decimal" placeholder="22"></div>
-     <div class="field"><label>Diâm./Larg. cm</label><input id="wB" inputmode="decimal" placeholder="6.3"></div>
+     <div class="field"><label>Altura cm</label><input id="hB" inputmode="decimal" placeholder="17"></div>
+     <div class="field"><label>Diâm./Larg. cm</label><input id="wB" inputmode="decimal" placeholder="6"></div>
      <div class="field"><label>Prof. cm</label><input id="dB" inputmode="decimal" placeholder=""></div>
     </div>
    </div>
@@ -370,6 +371,7 @@ function lerJson(r){
  var h='<div class="aviso ok"><strong>'+esc(d.nome||'Produto sem nome')+'</strong>';
  if(d.marca)h+=' · '+esc(d.marca);
  if(d.medidas)h+='<br>Medidas informadas: '+esc(d.medidas);
+ if(d.kits&&d.kits.length)h+='<br>Vendido em <strong>'+d.kits.length+'</strong> quantidade(s): '+esc(d.kits.join(', '))+' unidade(s) — uma capa por quantidade.';
  if(d.compat&&d.compatCom)h+='<br>Compatível com: '+esc(d.compatCom);
  if(d.quando)h+='<br><span style="color:var(--db-cinza)">Enviado em '+esc(d.quando)+'</span>';
  h+='</div>';
@@ -406,7 +408,26 @@ function comparar(cm){
  return 'do tamanho de uma criança pequena em pé'}
 q('calc').onclick=function(){
  var A={n:q('mA').value.trim(),h:num('hA'),w:num('wA'),d:num('dA')}, B={n:q('mB').value.trim(),h:num('hB'),w:num('wB'),d:num('dB')};
- if(!A.h||!B.h){alert('Preencha a altura em cm dos dois produtos.');return}
+ if(!A.h&&!B.h){alert('Preencha a altura em cm do seu produto.');return}
+ if(!A.h||!B.h){
+  /* um produto so: nao existe segundo item para comparar, entao a referencia
+     e um objeto que todo mundo conhece. Sem isso o botao travava e obrigava a
+     inventar um segundo produto so para satisfazer o formulario. */
+  var U=A.h?A:B, nU=U.n||'o produto';
+  var s1='REGRA DE ESCALA (obrigatória nesta cena, escreva do jeito que está aqui):\n\n';
+  s1+='O '+nU+' mede '+fmt(U.h)+' cm de altura';
+  if(U.w)s1+=' por '+fmt(U.w)+' cm de '+(U.d?'largura':'diâmetro');
+  if(U.d)s1+=' por '+fmt(U.d)+' cm de profundidade';
+  s1+=' — é '+comparar(U.h)+'.\n\n';
+  s1+='O '+nU+' aparece INTEIRO no enquadramento, apoiado sobre a superfície, em uma única fotografia real com lente 50 mm. ';
+  s1+='Se aparecer pessoa, mão ou qualquer objeto do dia a dia na cena, o tamanho relativo precisa bater com essa medida: '+comparar(U.h)+'. ';
+  s1+='Se na imagem ele parecer muito maior ou muito menor que isso, a imagem está errada e precisa ser refeita.\n\n';
+  s1+='Sem colagem, sem montagem, sem foto dentro de foto.';
+  q('escTxt').textContent=s1;
+  q('escOut').style.display='block';
+  q('escOut').scrollIntoView({behavior:'smooth',block:'nearest'});
+  return;
+ }
  if(B.h>A.h){var t=A;A=B;B=t}
  var nA=A.n||'produto maior', nB=B.n||'produto menor';
  var r=A.h/B.h;
@@ -479,6 +500,18 @@ function fichaLimpar(){
  if(d.marca&&!q('fMarca').value)q('fMarca').value=d.marca;
  if(d.categoria&&!q('fCat').value)q('fCat').value=d.categoria;
  if(d.nome&&!q('mB').value)q('mB').value=d.nome;
+ /* as medidas vinham no pacote mas so eram exibidas como texto; agora entram
+    nos campos. Aceita "17 x 6 cm", "43 x 33 x 35 cm", "22cm x 6,3cm". */
+ if(d.medidas){
+  var txt=String(d.medidas);
+  /* so interpreta se parecer medida mesmo: precisa ter "cm" ou um separador x.
+     Sem isso, um "400ml" solto viraria 400 cm de altura. */
+  var mm=(/cm/i.test(txt)||/[x\u00d7]/i.test(txt))?(txt.replace(/,/g,'.').match(/\d+(?:\.\d+)?/g)||[]):[];
+  mm=mm.map(Number).filter(function(n){return n>0&&n<=400}).slice(0,3);
+  if(mm[0]&&!q('hB').value)q('hB').value=mm[0];
+  if(mm[1]&&!q('wB').value)q('wB').value=mm[1];
+  if(mm[2]&&!q('dB').value)q('dB').value=mm[2];
+ }
 })();
 
 /* fotos reais: reduz para 1024 px e guarda em base64 */
