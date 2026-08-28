@@ -445,7 +445,9 @@ q('calc').onclick=function(){
  if(B.w)s+=' por '+fmt(B.w)+' cm de '+(B.d?'largura':'diâmetro');
  if(B.d)s+=' por '+fmt(B.d)+' cm de profundidade';
  s+=' — é '+comparar(B.h)+'.\n\n';
- s+='PROPORÇÃO FIXA: a altura de '+nA+' é '+porExtenso(r)+' da altura de '+nB+'. ';
+ /* porExtenso ja devolve a palavra "altura" dentro ("o dobro da altura",
+    "igual a altura"), entao aqui entra so " de " — senao sai "da altura da altura". */
+ s+='PROPORÇÃO FIXA: a altura de '+nA+' é '+porExtenso(r)+' de '+nB+'. ';
  s+='Dito de outro jeito: '+nB+' ocupa cerca de '+Math.round(100/r)+'% da altura de '+nA+'. ';
  s+='Se na imagem essa proporção não bater, a imagem está errada e precisa ser refeita.\n\n';
  s+='Os dois produtos aparecem INTEIROS no enquadramento, apoiados na mesma superfície, à MESMA distância da câmera, em uma única fotografia real com lente 50 mm, mesma luz e mesma profundidade de campo. Sem colagem, sem montagem, sem foto dentro de foto.';
