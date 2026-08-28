@@ -372,6 +372,7 @@ function lerJson(r){
  if(d.marca)h+=' · '+esc(d.marca);
  if(d.medidas)h+='<br>Medidas informadas: '+esc(d.medidas);
  if(d.kits&&d.kits.length)h+='<br>Vendido em <strong>'+d.kits.length+'</strong> quantidade(s): '+esc(d.kits.join(', '))+' unidade(s) — uma capa por quantidade.';
+ if(d.studio)h+='<br>A ficha do produto veio preenchida do anúncio. <strong>Confira antes de gerar foto</strong> — o que estiver escrito lá é o que a imagem vai mostrar.';
  if(d.compat&&d.compatCom)h+='<br>Compatível com: '+esc(d.compatCom);
  if(d.quando)h+='<br><span style="color:var(--db-cinza)">Enviado em '+esc(d.quando)+'</span>';
  h+='</div>';
@@ -500,6 +501,21 @@ function fichaLimpar(){
  if(d.marca&&!q('fMarca').value)q('fMarca').value=d.marca;
  if(d.categoria&&!q('fCat').value)q('fCat').value=d.categoria;
  if(d.nome&&!q('mB').value)q('mB').value=d.nome;
+ /* a ficha do anuncio tambem atravessa: diferencial, conteudo da caixa, cena de
+    comparacao e passo a passo saem do proprio anuncio que acabou de ser gerado.
+    So preenche campo vazio, para nunca apagar o que voce ja escreveu na mao. */
+ var E=d.studio;
+ /* roda depois que o resto da pagina terminou de se montar: o onchange do fKit,
+    que abre o quadro das pecas, so e ligado mais abaixo neste arquivo. */
+ if(E)setTimeout(function(){
+  if(E.diferencial&&!q('fDif').value)q('fDif').value=E.diferencial;
+  if(E.conteudo&&!q('fCaixa').value)q('fCaixa').value=E.conteudo;
+  if(E.comparacao&&!q('fComp').value)q('fComp').value=E.comparacao;
+  if(E.passos&&E.passos.length&&!q('fPasso').value)q('fPasso').value=E.passos.join('\n');
+  /* abre o quadro das pecas sem disparar o onchange: ele rola a pagina, e um
+     salto sozinho ao abrir o STUDIO assusta mais do que ajuda. */
+  if(E.kit&&!q('fKit').checked){q('fKit').checked=true;q('kitBox').style.display='block'}
+ },0);
  /* as medidas vinham no pacote mas so eram exibidas como texto; agora entram
     nos campos. Aceita "17 x 6 cm", "43 x 33 x 35 cm", "22cm x 6,3cm". */
  if(d.medidas){
