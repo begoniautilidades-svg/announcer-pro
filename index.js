@@ -640,44 +640,61 @@ function moldaAtributo(a) {
   return o;
 }
 
+/* Le a ficha da categoria e devolve o CAMINHO INTEIRO, do departamento ate a folha.
+   Isso existe porque o domain_discovery devolve so o nome curto ("Calices") e o nome
+   curto engana: "Calices" e Esoterismo e Ocultismo, nao louca de mesa. Com o caminho
+   na tela o erro fica obvio antes de anunciar. Traz tambem quantos anuncios a
+   categoria tem, que e o melhor sinal de "e aqui que esse produto mora". */
+async function infoCategoria(id) {
+  const o = { id: String(id || ""), nome: "", caminho: "", itens: null };
+  if (!o.id) return o;
+  try {
+    const rc = await fetch(ML_API + "/categories/" + encodeURIComponent(o.id));
+    if (rc.ok) {
+      const jc = await rc.json();
+      o.nome = String(jc.name || "");
+      if (Array.isArray(jc.path_from_root) && jc.path_from_root.length) {
+        o.caminho = jc.path_from_root.map(p => String(p.name || "")).join(" > ");
+      }
+      if (typeof jc.total_items_in_this_category === "number") o.itens = jc.total_items_in_this_category;
+    }
+  } catch (e) {}
+  return o;
+}
+
 async function handleCategoria(request) {
   const url = new URL(request.url);
   const q = String(url.searchParams.get("q") || "").trim().slice(0, 200);
-  const forcada = String(url.searchParams.get("cat") || "").trim().slice(0, 20);
+  /* aceita tanto "MLB192369" quanto o link inteiro da categoria colado do navegador */
+  const bruto = String(url.searchParams.get("cat") || "").trim().slice(0, 300);
+  const achado = bruto.match(/MLB\d+/i);
+  const forcada = achado ? achado[0].toUpperCase() : "";
   if (!q && !forcada) return json({ error: "Digite o nome do produto antes de buscar a categoria." }, 400);
+  if (bruto && !forcada) return json({ error: "Não reconheci uma categoria em \"" + bruto + "\". Cole o código no formato MLB123456 ou o link da categoria." }, 400);
 
-  let id = forcada, nome = "", dominio = "", alternativas = [];
+  let id = forcada, nome = "", dominio = "", itens = null, alternativas = [];
   try {
     if (!id) {
-      const r = await fetch(ML_API + "/sites/MLB/domain_discovery/search?limit=5&q=" + encodeURIComponent(q));
+      const r = await fetch(ML_API + "/sites/MLB/domain_discovery/search?limit=8&q=" + encodeURIComponent(q));
       if (!r.ok) return json({ error: "O Mercado Livre não respondeu a busca de categoria (" + r.status + ")." }, 502);
       const lista = await r.json();
       if (!Array.isArray(lista) || !lista.length) {
         return json({ error: "O Mercado Livre não sugeriu categoria para esse nome. Escreva o produto do jeito que o comprador procura, por exemplo 'jogo de panelas antiaderente 12 peças'." }, 404);
       }
       id = String(lista[0].category_id || "");
-      nome = String(lista[0].category_name || "");
-      dominio = String(lista[0].domain_name || "");
-      alternativas = lista.slice(1, 4).map(x => ({
-        id: String(x.category_id || ""),
-        nome: String(x.category_name || ""),
-        dominio: String(x.domain_name || "")
-      })).filter(x => x.id);
+      /* as outras sugestoes vem com o caminho inteiro tambem: sem isso ele teria
+         que abrir cada uma no ML para descobrir de que departamento e. */
+      const outras = lista.slice(1, 5).map(x => String(x.category_id || "")).filter(Boolean);
+      alternativas = await Promise.all(outras.map(infoCategoria));
+      alternativas = alternativas.filter(a => a.nome);
     }
     if (!id) return json({ error: "Não consegui identificar a categoria." }, 404);
 
-    if (!nome) {
-      try {
-        const rc = await fetch(ML_API + "/categories/" + encodeURIComponent(id));
-        if (rc.ok) {
-          const jc = await rc.json();
-          nome = String(jc.name || "");
-          if (Array.isArray(jc.path_from_root)) {
-            dominio = jc.path_from_root.map(p => String(p.name || "")).join(" > ");
-          }
-        }
-      } catch (e) {}
-    }
+    const info = await infoCategoria(id);
+    nome = info.nome;
+    dominio = info.caminho;
+    itens = info.itens;
+    if (!nome) return json({ error: "A categoria " + id + " não existe no Mercado Livre." }, 404);
 
     const ra = await fetch(ML_API + "/categories/" + encodeURIComponent(id) + "/attributes");
     if (!ra.ok) return json({ error: "Não consegui ler os atributos da categoria " + id + " (" + ra.status + ")." }, 502);
@@ -699,7 +716,7 @@ async function handleCategoria(request) {
     const opcionais = uteis.filter(a => !ehObrig(a)).map(moldaAtributo).slice(0, 30);
 
     return json({
-      categoria: { id, nome, caminho: dominio },
+      categoria: { id, nome, caminho: dominio, itens },
       alternativas,
       obrigatorios,
       opcionais,
@@ -869,7 +886,9 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
 .side{position:sticky;top:14px;align-self:start}@media(max-width:920px){.side{position:static}}
 .btn{display:block;width:100%;padding:12px;border:none;border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer}
 .btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-d)}.btn-p:disabled{opacity:.6;cursor:wait}
-.btn-g{background:#fff;border:1px solid var(--line);margin-top:8px}
+/* cinza claro de verdade, borda visivel e texto escuro: em branco puro com borda
+   fininha o botao parecia desativado e ele deixava de clicar. */
+.btn-g{background:#f1f5f9;border:1px solid #cbd5e1;color:#0f172a;margin-top:8px}.btn-g:hover{background:#e2e8f0}
 #out{white-space:pre-wrap;font-size:.8rem;background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px;max-height:460px;overflow:auto;margin-top:12px;line-height:1.55}
 .spin{display:none;text-align:center;color:var(--muted);font-size:.82rem;padding:20px}
 .req{color:var(--warn)}
@@ -886,6 +905,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <div class="g2" style="margin-top:2px"><div class="field"><label>Categoria no Mercado Livre</label><input id="cat" placeholder="Jogo de Panelas"></div><div class="field"><label>&nbsp;</label><button id="bcat" class="btn btn-p" style="width:100%">🏷️ Buscar categoria e atributos</button></div></div>
   <p class="hint" style="margin:0 0 10px">Pergunto ao Mercado Livre qual é a categoria e trago os atributos que ela exige. Eles entram na ficha técnica do anúncio, com os nomes que o ML usa.</p>
   <div id="catout" style="display:none;font-size:.85rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:8px;margin-bottom:10px"></div>
+  <div class="g2" style="margin-bottom:10px"><div class="field"><label>Se o ML errou: código ou link da categoria certa</label><input id="catid" placeholder="MLB192369"></div><div class="field"><label>&nbsp;</label><button id="bcatid" class="btn btn-g" style="width:100%;margin-top:0">📍 Usar esta categoria</button></div></div>
   <div class="field"><label>Medidas</label><input id="med" placeholder="43 x 33 x 35 cm"><p class="hint" style="margin:6px 0 0">Vai junto para o STUDIO e enche o Contrato de medidas sozinho.</p></div>
   <div id="medask" style="display:none;margin-top:10px;background:#FFF7ED;border:1px solid #FDBA74;border-radius:10px;padding:10px;font-size:.85rem;line-height:1.5"></div>
   <div class="sw" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)"><label class="switch"><input type="checkbox" id="ct"><span class="sl"></span></label><span style="font-size:.85rem"><strong>É refil / compatível</strong> com outra marca</span></div>
@@ -1141,17 +1161,32 @@ function buscarCat(idForcado){
   CATINFO=j;
   var ci=document.getElementById('cat');if(ci)ci.value=j.categoria.nome||ci.value;
   var h='🏷️ <strong>'+esc(j.categoria.nome||'(sem nome)')+'</strong> <span style="color:#64748b">'+esc(j.categoria.id)+'</span>';
-  if(j.categoria.caminho)h+='<br><span style="color:#64748b">'+esc(j.categoria.caminho)+'</span>';
+  /* o caminho inteiro vem em destaque, e nao mais em cinza de rodape: e ele que
+     denuncia a categoria errada. "Calices" parece certo; "Esoterismo e Ocultismo
+     > Calices" nao engana ninguem. */
+  if(j.categoria.caminho)h+='<br><span style="color:#1e293b">📍 '+esc(j.categoria.caminho)+'</span>';
+  if(typeof j.categoria.itens==='number')h+=' <span style="color:#64748b">('+j.categoria.itens.toLocaleString('pt-BR')+' anúncios)</span>';
   h+='<br><strong>'+j.obrigatorios.length+'</strong> atributo(s) obrigatório(s), <strong>'+j.opcionais.length+'</strong> opcional(is) — de '+esc(j.total)+' na categoria.';
   if(j.obrigatorios.length)h+='<br><span style="color:#4338ca"><strong>Obrigatórios:</strong> '+esc(nomesAttr(j.obrigatorios))+'</span>';
+  h+='<br><span style="color:#92400e">⚠️ Confira o caminho antes de usar. O Mercado Livre chuta pelo nome e às vezes manda para outro departamento — taça já caiu em Esoterismo. Se estiver errado, cole o código certo aqui embaixo.</span>';
   if(j.alternativas&&j.alternativas.length){
-   h+='<br><span style="color:#64748b">Não é essa? '+j.alternativas.map(function(a){return '<a href="#" class="altcat" data-cat="'+esc(a.id)+'">'+esc(a.nome)+'</a>'}).join(' · ')+'</span>';
+   h+='<br><span style="color:#64748b">Não é essa? Outras que o ML sugeriu:</span>';
+   h+=j.alternativas.map(function(a){
+    var q=(typeof a.itens==='number')?(' <span style="color:#64748b">('+a.itens.toLocaleString('pt-BR')+' anúncios)</span>'):'';
+    return '<br>· <a href="#" class="altcat" data-cat="'+esc(a.id)+'">'+esc(a.nome)+'</a> <span style="color:#64748b">'+esc(a.caminho||'')+'</span>'+q;
+   }).join('');
   }
   h+='<br><span style="color:#64748b">Isso vai junto no briefing: o anúncio preenche o que der para deduzir do produto e marca [CONFIRMAR] no resto.</span>';
   box.innerHTML=h;
   [].forEach.call(box.querySelectorAll('.altcat'),function(a){a.onclick=function(e){e.preventDefault();buscarCat(a.getAttribute('data-cat'))}});
  }).catch(function(e){CATINFO=null;box.innerHTML='⚠️ Falha de rede: '+esc(e)})}
 document.getElementById('bcat').onclick=function(){buscarCat(null)};
+/* saida de emergencia: quando o chute do ML vem errado, ele abre a categoria certa
+   no proprio Mercado Livre e cola aqui o codigo ou o link. Vale os dois. */
+document.getElementById('bcatid').onclick=function(){
+ var t=(document.getElementById('catid').value||'').trim();
+ if(!t){var b=document.getElementById('catout');b.style.display='block';b.innerHTML='Cole o código da categoria (MLB123456) ou o link dela no Mercado Livre.';return}
+ buscarCat(t)};
 /* ---- cadastrar na planilha: SEMPRE mostra a linha e espera confirmar ---- */
 var CAD=null;
 document.getElementById('bcad').onclick=function(){
