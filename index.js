@@ -1262,7 +1262,7 @@ document.getElementById('copy').onclick=function(){navigator.clipboard.writeText
 try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';var _cd2=document.getElementById('crudetails');if(_cd2)_cd2.style.display='block';montarChips(_d.imagens||[],_d.cenas||[]);montarCanais(_d.result)}}}catch(x){}
 document.getElementById('gostudio').onclick=function(){
  var c=document.getElementById('ct').checked;
- var d={nome:v('nome'),marca:(c?(v('marcaReal')||''):(v('marca')||'Sayonara')),sku:v('sku'),categoria:v('cat'),medidas:v('med'),peso:v('peso'),compat:c,compatCom:v('marcaOrig'),imagens:ULT.imagens||[],cenas:ULT.cenas||[],quando:new Date().toLocaleString('pt-BR')};
+ var d={nome:v('nome'),marca:(c?(v('marcaReal')||''):(v('marca')||'Sayonara')),sku:v('sku'),categoria:v('cat'),medidas:v('med'),kits:(document.getElementById('kt').checked?kQtds():[]),peso:v('peso'),compat:c,compatCom:v('marcaOrig'),imagens:ULT.imagens||[],cenas:ULT.cenas||[],quando:new Date().toLocaleString('pt-BR')};
  var m=document.getElementById('stmsg');m.style.display='block';
  if(!d.nome&&!d.cenas.length){m.textContent='Preencha ao menos o nome do produto (ou gere o an\u00fancio) antes de enviar.';return}
  try{localStorage.setItem('db_studio_entrada',JSON.stringify(d))}catch(e){m.textContent='N\u00e3o consegui guardar os dados neste navegador.';return}
