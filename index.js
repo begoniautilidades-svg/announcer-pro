@@ -1090,7 +1090,12 @@ var canais=[];
 var ROT=['TITULO ALTERNATIVO','TITULO','FICHA TECNICA','CARACTERISTICAS DESTACADAS','BULLETS','DESCRICAO','PALAVRAS-CHAVE','ROTEIRO DO VIDEO','OBSERVACOES DO CANAL'];
 function parseCanais(t){var out=[],re=/\[\[CANAL:\s*([^\]]+)\]\]([\s\S]*?)\[\[\/CANAL\]\]/g,m;while((m=re.exec(t||''))){out.push({nome:m[1].trim(),texto:m[2].trim()})}return out}
 function campos(txt){var cur=null,res=[];
- (txt||'').split('\n').forEach(function(l){var hit=null,U=l.toUpperCase();
+ (txt||'').split('\n').forEach(function(l0){
+  /* Anuncios antigos foram arquivados com markdown (**TITULO:**). Tira os
+     asteriscos e o # so para RECONHECER o rotulo, senao o anuncio volta do
+     Drive sem os campos separados. O texto do valor continua intacto. */
+  var l=l0.replace(/^[\s*#>_-]+/,'').replace(/^([A-Za-zÀ-ÿ0-9 ]+?)\s*\*+\s*:/,'$1:').replace(/^([A-Za-zÀ-ÿ0-9 ]+?):\s*\*+\s*/,'$1: ');
+  var hit=null,U=l.toUpperCase();
   for(var i=0;i<ROT.length;i++){if(U.indexOf(ROT[i]+':')===0){hit=ROT[i];break}}
   if(hit){cur={rot:hit,val:l.slice(hit.length+1).trim()};res.push(cur)}
   else if(cur){cur.val+=(cur.val?'\n':'')+l}});
@@ -1106,7 +1111,12 @@ function verCanal(i){var c=canais[i],box=document.getElementById('cfields');box.
 var KROT=['TITULO','SKU','ATRIBUTO DE QUANTIDADE','CONTEUDO DA CAIXA','PROMPT DA CAPA'];
 function parseKits(t){var out=[],re=/\[\[KIT:\s*([^\]]+)\]\]([\s\S]*?)\[\[\/KIT\]\]/g,m;while((m=re.exec(t||''))){out.push({qtd:m[1].trim(),texto:m[2].trim()})}return out}
 function camposKit(txt){var cur=null,res=[];
- (txt||'').split('\n').forEach(function(l){var hit=null,U=l.toUpperCase();
+ (txt||'').split('\n').forEach(function(l0){
+  /* Anuncios antigos foram arquivados com markdown (**TITULO:**). Tira os
+     asteriscos e o # so para RECONHECER o rotulo, senao o anuncio volta do
+     Drive sem os campos separados. O texto do valor continua intacto. */
+  var l=l0.replace(/^[\s*#>_-]+/,'').replace(/^([A-Za-zÀ-ÿ0-9 ]+?)\s*\*+\s*:/,'$1:').replace(/^([A-Za-zÀ-ÿ0-9 ]+?):\s*\*+\s*/,'$1: ');
+  var hit=null,U=l.toUpperCase();
   for(var i=0;i<KROT.length;i++){if(U.indexOf(KROT[i]+':')===0){hit=KROT[i];break}}
   if(hit){cur={rot:hit,val:l.slice(hit.length+1).trim()};res.push(cur)}
   else if(cur){cur.val+=(cur.val?'\n':'')+l}});
