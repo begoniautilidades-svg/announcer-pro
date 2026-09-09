@@ -760,6 +760,46 @@ async function handleArquivar(request) {
   catch (e) { return json({ error: "O script do Drive respondeu algo inesperado. Confira se ele foi publicado com acesso para Qualquer pessoa. Resposta: " + t.slice(0, 200) }, 502); }
 }
 
+/* Pergunta ao Drive se aquele SKU ja tem anuncio arquivado. E o que permite
+   abrir o ANNOUNCER PRO em outro computador, digitar o SKU e receber tudo
+   preenchido de novo, em vez de depender da memoria daquele navegador. */
+async function handleLerAnuncio(request) {
+  let b;
+  try { b = await request.json(); } catch (e) { return json({ error: "JSON inválido." }, 400); }
+  let h;
+  try { h = new URL(String(b.destino || "")); } catch (e) { return json({ error: "Configure primeiro o link do script do Google (o mesmo do arquivamento no Drive)." }, 400); }
+  if (!/(^|\.)google\.com$/.test(h.hostname)) {
+    return json({ error: "O link precisa ser do Google Apps Script (script.google.com)." }, 400);
+  }
+  const sku = String(b.sku || "").trim().slice(0, 60);
+  if (!sku) return json({ error: "Digite o SKU." }, 400);
+  /* Confere primeiro, com um GET inofensivo, se a implantacao publicada ja
+     entende leitura. A versao antiga do script nao entende o pedido "ler",
+     cai no caminho de arquivamento e cria uma pasta vazia no Drive — entao
+     so perguntamos depois que ela se anuncia capaz. */
+  try {
+    const pg = await fetch(h.toString(), { redirect: "follow" });
+    const pt = await pg.text();
+    let pj = null;
+    try { pj = JSON.parse(pt); } catch (e) {}
+    if (!pj || pj.leitura !== true) {
+      return json({ error: "O script do Google ainda está na versão antiga, que não sabe devolver anúncios. No editor do Apps Script: Implantar → Gerenciar implantações → lápis → Versão: Nova versão → Implantar." }, 409);
+    }
+  } catch (e) { return json({ error: "Não consegui falar com o Drive: " + e }, 502); }
+  let r;
+  try {
+    r = await fetch(h.toString(), {
+      method: "POST",
+      headers: { "content-type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ acao: "ler", sku }),
+      redirect: "follow"
+    });
+  } catch (e) { return json({ error: "Não consegui falar com o Drive: " + e }, 502); }
+  const t = await r.text();
+  try { return json(JSON.parse(t)); }
+  catch (e) { return json({ error: "O script do Google respondeu algo inesperado. Se você acabou de atualizar o script, publique uma NOVA VERSÃO da implantação. Resposta: " + t.slice(0, 200) }, 502); }
+}
+
 async function handleCadastrar(request) {
   let b;
   try { b = await request.json(); } catch (e) { return json({ error: "JSON inválido." }, 400); }
@@ -846,6 +886,9 @@ export default {
     }
     if (url.pathname === "/api/arquivar" && request.method === "POST") {
       return handleArquivar(request);
+    }
+    if (url.pathname === "/api/ler-anuncio" && request.method === "POST") {
+      return handleLerAnuncio(request);
     }
     if (url.pathname === "/api/cadastrar" && request.method === "POST") {
       return handleCadastrar(request);
@@ -1104,21 +1147,50 @@ document.getElementById('baixar').onclick=function(){var sku=v('sku')||v('nome')
   var blob=new Blob([sku+' — '+c.nome+'\n\n'+c.texto],{type:'text/plain;charset=utf-8'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(sku+' - '+c.nome+'.txt').replace(/[\\/:*?"<>|]/g,'-');
   document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(a.href)},4000)},i*400)})};
-document.getElementById('arquivar').onclick=function(){
- var u=gsUrl(),b=document.getElementById('arqout'),btn=this;b.style.display='block';
- if(!u){b.innerHTML='⚙️ Antes cole o link do script em "Configurar o arquivamento no Drive", logo abaixo.';return}
- if(!canais.length){b.innerHTML='Gere um anúncio primeiro.';return}
- var _sk=v('sku').trim();
- if(!_sk&&!window.__semsku){b.innerHTML='📌 O campo <strong>SKU</strong> (lá em cima, no item 1) está vazio — a pasta no Drive vai se chamar <strong>SEM-SKU</strong>. Preencha o SKU e clique de novo, ou <a href="#" id="asemsku">arquivar assim mesmo</a>.';var _l=document.getElementById('asemsku');if(_l)_l.onclick=function(ev){ev.preventDefault();window.__semsku=1;document.getElementById('arquivar').click()};return}
- window.__semsku=0;
- b.innerHTML='Enviando para o Drive…';btn.disabled=true;
- fetch('/api/arquivar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({destino:u,sku:v('sku')||'SEM-SKU',produto:v('nome')||'Produto',canais:canais,completo:document.getElementById('out').textContent||''})})
- .then(function(r){return r.json()}).then(function(j){btn.disabled=false;
-  if(j.error){b.innerHTML='⚠️ '+esc(j.error);return}
-  var h='✅ Arquivado em <strong>'+esc(j.pasta||'Drive')+'</strong>';
-  if(j.link)h+=' — <a href="'+esc(j.link)+'" target="_blank">abrir pasta</a>';
+/* O arquivamento no Drive era so manual, e por isso dois meses de anuncios
+   ficaram guardados apenas no navegador e se perderam quando o proximo anuncio
+   sobrescreveu o anterior. Agora o Gerar anuncio chama isto sozinho (auto=true)
+   e o botao continua servindo para re-arquivar uma versao corrigida. */
+function arquivarAnuncio(auto){
+ var u=gsUrl(),b=document.getElementById('arqout'),btn=document.getElementById('arquivar');
+ var sku=chaveSku(v('sku'));
+ if(!u){ if(!auto){b.style.display='block';b.innerHTML='⚙️ Antes cole o link do script em "Configurar o arquivamento no Drive", logo abaixo.'} return Promise.resolve({pulado:1}) }
+ if(!canais.length){ if(!auto){b.style.display='block';b.innerHTML='Gere um anúncio primeiro.'} return Promise.resolve({pulado:1}) }
+ b.style.display='block';
+ b.innerHTML=auto?'☁️ Guardando o anúncio no Drive…':'Enviando para o Drive…';
+ if(btn)btn.disabled=true;
+ return fetch('/api/arquivar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({destino:u,sku:v('sku')||'SEM-SKU',produto:v('nome')||'Produto',canais:canais,completo:document.getElementById('out').textContent||''})})
+ .then(function(r){return r.json()}).then(function(j){
+  if(btn)btn.disabled=false;
+  if(j.error){b.innerHTML='⚠️ '+esc(j.error)+(auto?'<br>O anúncio continua salvo neste navegador. Clique em <strong>☁️ Arquivar no Drive</strong> para tentar de novo.':'');return j}
+  var h=(auto?'☁️ Guardado no Drive sozinho, em <strong>':'✅ Arquivado em <strong>')+esc(j.pasta||'Drive')+'</strong>';
+  if(j.link)h+=' — <a href="'+esc(j.link)+'" target="_blank">abrir a pasta</a>';
   if(j.arquivos&&j.arquivos.length)h+='<br>'+j.arquivos.map(esc).join('<br>');
-  b.innerHTML=h}).catch(function(e){btn.disabled=false;b.innerHTML='⚠️ Falha: '+esc(e)})};
+  b.innerHTML=h;
+  if(sku&&j.link)guardarLink(sku,j.link,j.pasta||'');
+  return j;
+ }).catch(function(e){if(btn)btn.disabled=false;b.innerHTML='⚠️ Falha: '+esc(e);return {error:String(e)}});
+}
+/* Guarda junto do anuncio o link da pasta no Drive, para o Buscar na planilha
+   conseguir te levar la mesmo quando voce voltar dias depois. */
+function guardarLink(sku,link,pasta){
+ var k=chaveSku(sku),bco=lerBanco();
+ if(bco[k]){bco[k].link=link;bco[k].pasta=pasta;gravarBanco(bco)}
+ try{var l=JSON.parse(localStorage.getItem('ap_last')||'{}');if(chaveSku(l.sku)===k){l.link=link;l.pasta=pasta;localStorage.setItem('ap_last',JSON.stringify(l))}}catch(e){}
+ marcarDono(k,link);
+}
+document.getElementById('arquivar').onclick=function(){
+ var b=document.getElementById('arqout');
+ var _sk=v('sku').trim();
+ if(!_sk&&!window.__semsku&&gsUrl()&&canais.length){
+  b.style.display='block';
+  b.innerHTML='📌 O campo <strong>SKU</strong> (lá em cima, no item 1) está vazio — a pasta no Drive vai se chamar <strong>SEM-SKU</strong>. Preencha o SKU e clique de novo, ou <a href="#" id="asemsku">arquivar assim mesmo</a>.';
+  var _l=document.getElementById('asemsku');if(_l)_l.onclick=function(ev){ev.preventDefault();window.__semsku=1;document.getElementById('arquivar').click()};
+  return;
+ }
+ window.__semsku=0;
+ arquivarAnuncio(false);
+};
 (function(){var a=document.getElementById('sku'),b=document.getElementById('sku2');if(!a||!b)return;
  a.addEventListener('input',function(){b.value=a.value});
  b.addEventListener('input',function(){a.value=b.value});})();
@@ -1148,11 +1220,13 @@ function limparAnuncio(){
  var r=document.getElementById('stresumo');if(r){r.style.display='none';r.innerHTML=''}
 }
 function donoAtual(){try{return localStorage.getItem('ap_dono')||''}catch(e){return ''}}
-function marcarDono(s){
+function marcarDono(s,link){
  try{if(s)localStorage.setItem('ap_dono',s);else localStorage.removeItem('ap_dono')}catch(e){}
  var d=document.getElementById('apdono');if(!d)return;
- if(s){d.textContent='Este anúncio é do produto: '+s;d.style.display='block'}
- else{d.textContent='';d.style.display='none'}
+ if(s){
+  d.innerHTML='Este anúncio é do produto: '+esc(s)+(link?' — <a href="'+esc(link)+'" target="_blank">abrir a pasta no Drive</a>':'');
+  d.style.display='block';
+ } else {d.textContent='';d.style.display='none'}
 }
 /* Banco de anuncios por SKU, guardado neste navegador. Antes so existia o
    ap_last, que era UM anuncio (o ultimo gerado) — por isso ao buscar um SKU
@@ -1183,6 +1257,23 @@ function salvarAnuncio(sku,d){
 }
 function buscarAnuncio(sku){var k=chaveSku(sku);if(!k)return null;var b=lerBanco();return b[k]||null}
 function dataBR(t){try{return t?new Date(t).toLocaleDateString('pt-BR'):''}catch(e){return ''}}
+/* Se o anuncio nao esta neste navegador, pergunta ao Drive. E isto que deixa
+   voce gerar o anuncio no notebook hoje e publicar do outro computador depois,
+   sem ter que gerar de novo. */
+function procurarNoDrive(sku,box,base){
+ var u=gsUrl();
+ if(!u){box.innerHTML=base.replace('Procurando no seu Drive…','')+'<br><span style="color:#b45309">📄 Não tenho o anúncio deste SKU aqui, e o link do script do Drive não está configurado, então não consigo procurar lá. Clique em <strong>Gerar anúncio</strong>.</span>';return}
+ fetch('/api/ler-anuncio',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({destino:u,sku:sku})})
+ .then(function(r){return r.json()}).then(function(j){
+  var b0=base.replace('Procurando no seu Drive…','');
+  if(j.error){box.innerHTML=b0+'<br><span style="color:#b45309">⚠️ Não consegui procurar no Drive: '+esc(j.error)+'</span>';return}
+  if(!j.achou||!j.completo){box.innerHTML=b0+'<br><span style="color:#b45309">📄 Não existe anúncio deste SKU nem aqui nem no Drive. Clique em <strong>Gerar anúncio</strong> — ele vai ser guardado sozinho.</span>';return}
+  var d={sku:sku,result:j.completo,imagens:[],cenas:[],studio:null,medidas:'',link:j.link||'',pasta:j.pasta||'',quando:Date.now()};
+  salvarAnuncio(sku,d);
+  restaurarAnuncio(d,sku);
+  box.innerHTML=b0+'<br><span style="color:#047857">☁️ Achei no seu Drive'+(j.quando?(', arquivado em <strong>'+esc(j.quando)+'</strong>'):'')+'. Abri o anúncio inteiro à direita, em <strong>Pronto para publicar</strong> — título, título alternativo, ficha técnica, bullets, descrição e palavras-chave, cada um com o botão de copiar.'+(j.link?' A pasta está <a href="'+esc(j.link)+'" target="_blank">aqui</a>.':'')+'<br><em>Os prompts de imagem e as cenas de vídeo não vêm do Drive — eles ficam só no navegador onde o anúncio foi gerado.</em></span>';
+ }).catch(function(e){box.innerHTML=base.replace('Procurando no seu Drive…','')+'<br><span style="color:#b45309">⚠️ Falha de rede ao procurar no Drive: '+esc(e)+'</span>'});
+}
 function restaurarAnuncio(d,sku){
  if(!d||!d.result)return false;
  var k=chaveSku(sku||d.sku);
@@ -1192,8 +1283,8 @@ function restaurarAnuncio(d,sku){
  montarChips(d.imagens||[],d.cenas||[],d.studio||null);
  montarCanais(d.result);
  if(d.medidas){var m=document.getElementById('med');if(m)m.value=d.medidas}
- marcarDono(k);
- try{localStorage.setItem('ap_last',JSON.stringify({sku:k,result:d.result,imagens:d.imagens||[],cenas:d.cenas||[],studio:d.studio||null,medidas:d.medidas||'',quando:d.quando||Date.now()}))}catch(e){}
+ marcarDono(k,d.link||'');
+ try{localStorage.setItem('ap_last',JSON.stringify({sku:k,result:d.result,imagens:d.imagens||[],cenas:d.cenas||[],studio:d.studio||null,medidas:d.medidas||'',link:d.link||'',pasta:d.pasta||'',quando:d.quando||Date.now()}))}catch(e){}
  return true;
 }
 document.getElementById('bsku').onclick=function(){
@@ -1215,11 +1306,14 @@ document.getElementById('bsku').onclick=function(){
   var guardado=buscarAnuncio(novo);
   if(guardado){
    restaurarAnuncio(guardado,novo);
-   h+='<br><span style="color:#047857">📋 Achei o anúncio deste SKU, gerado em <strong>'+esc(dataBR(guardado.quando))+'</strong>. Ele está aberto à direita, em <strong>Pronto para publicar</strong>, com título, título alternativo, ficha técnica, bullets, descrição e palavras-chave. Se quiser refazer do zero, clique em Gerar anúncio.</span>';
+   h+='<br><span style="color:#047857">📋 Achei o anúncio deste SKU, gerado em <strong>'+esc(dataBR(guardado.quando))+'</strong>. Ele está aberto à direita, em <strong>Pronto para publicar</strong>, com título, título alternativo, ficha técnica, bullets, descrição e palavras-chave — é só copiar campo por campo. Se quiser refazer do zero, clique em Gerar anúncio.'+(guardado.link?' A pasta no Drive está <a href="'+esc(guardado.link)+'" target="_blank">aqui</a>.':'')+'</span>';
   }else{
    if(ant&&ant!==novo){var _m=document.getElementById('med');if(_m)_m.value=''}
    limparAnuncio();marcarDono('');
-   h+='<br><span style="color:#b45309">📄 Ainda não existe anúncio gerado para <strong>'+esc(novo)+'</strong> neste navegador. Clique em <strong>Gerar anúncio</strong> — e depois em <strong>☁️ Arquivar no Drive</strong>, senão ele fica só aqui.</span>';
+   h+='<br><span style="color:#64748b">🔎 Não tenho o anúncio de <strong>'+esc(novo)+'</strong> guardado neste navegador. Procurando no seu Drive…</span>';
+   box.innerHTML=h;
+   procurarNoDrive(novo,box,h);
+   return;
   }
   box.innerHTML=h;
  }).catch(function(e){box.innerHTML='⚠️ Falha de rede: '+esc(e)})};
@@ -1378,7 +1472,7 @@ document.getElementById('go').onclick=function(){
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
    var _av=document.getElementById('geraviso');
    if(_av){_av.style.display=j.aviso?'block':'none';_av.textContent=j.aviso?('\u26a0\ufe0f '+j.aviso):''}
-   if(j.result){document.getElementById('copy').style.display='block';var _cd=document.getElementById('crudetails');if(_cd)_cd.style.display='block';montarChips(j.imagens||[],j.cenas||[],j.studio||null);montarCanais(j.result);pedirMedidas(j.result);var _dn=chaveSku(v('sku')||v('nome'));marcarDono(_dn);var _pk={sku:_dn,result:j.result,imagens:j.imagens||[],cenas:j.cenas||[],studio:j.studio||null,medidas:v('med')||''};salvarAnuncio(_dn,_pk);try{localStorage.setItem('ap_last',JSON.stringify(_pk))}catch(x){}}
+   if(j.result){document.getElementById('copy').style.display='block';var _cd=document.getElementById('crudetails');if(_cd)_cd.style.display='block';montarChips(j.imagens||[],j.cenas||[],j.studio||null);montarCanais(j.result);pedirMedidas(j.result);var _dn=chaveSku(v('sku')||v('nome'));marcarDono(_dn);var _pk={sku:_dn,result:j.result,imagens:j.imagens||[],cenas:j.cenas||[],studio:j.studio||null,medidas:v('med')||''};salvarAnuncio(_dn,_pk);try{localStorage.setItem('ap_last',JSON.stringify(_pk))}catch(x){}arquivarAnuncio(true);}
  }).catch(function(e){btn.disabled=false;spinOff(false);out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
 try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);restaurarAnuncio(_d,_d.sku||donoAtual()||'anúncio anterior (SKU não registrado)')}}catch(x){}
