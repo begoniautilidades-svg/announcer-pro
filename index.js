@@ -970,7 +970,8 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <details style="margin-top:8px"><summary style="cursor:pointer;font-size:.85rem;color:var(--muted)">⚙️ Configurar o link da planilha (só uma vez)</summary>
    <p class="hint" style="margin-top:8px">Na sua planilha PAINEL: <strong>Arquivo → Compartilhar → Publicar na web → escolha CSV → Publicar</strong>. Copie o link que aparecer e cole aqui.</p>
    <div class="field"><input id="csvurl" placeholder="https://docs.google.com/spreadsheets/d/e/..../pub?output=csv"></div>
-   <button id="bcsv" class="btn btn-g" style="margin-top:6px">Salvar link</button></details></div>
+   <button id="bcsv" class="btn btn-g" style="margin-top:6px">Salvar link</button>
+   <div id="csvout" style="display:none;margin-top:8px;font-size:.85rem;background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;border-radius:8px;padding:8px"></div></details></div>
  <div class="card"><h2>2 · Fotos reais do produto <span class="req">*</span></h2><p class="hint">Até 4 fotos (ângulos diferentes ajudam). Elas vão junto para o STUDIO e garantem que as imagens geradas fiquem idênticas ao seu produto.</p>
   <label class="imgbtn" for="img">📷 <strong>Importar fotos (até 4)</strong></label><input id="img" type="file" accept="image/*" multiple hidden><div class="thumbs" id="thumbs"></div></div>
  <div class="card"><h2>3 · Tudo sobre o produto</h2><p class="hint"><strong>É aqui que vai o resto.</strong> Escreva do jeito que você falaria — voltagem, capacidade, cor, material, garantia, EAN, INMETRO, diferenciais, para quem serve. Eu leio e organizo sozinha.</p><textarea id="desc" rows="7" placeholder="Exemplo:&#10;Bivolt. Capacidade 4,2 litros.&#10;Sem PFOA, fundo triplo, 3 sistemas de segurança.&#10;Cor preta. Garantia de 1 ano. Certificado INMETRO.&#10;EAN 7898000000000.&#10;Serve para quem cozinha para uma família de 4 pessoas."></textarea>
@@ -1210,9 +1211,29 @@ function csvUrl(){try{return localStorage.getItem('ap_csv')||''}catch(e){return 
 try{document.getElementById('csvurl').value=csvUrl()}catch(e){}
 document.getElementById('bcsv').onclick=function(){
  var u=document.getElementById('csvurl').value.trim();
- try{localStorage.setItem('ap_csv',u)}catch(e){}
- var b=document.getElementById('skuout');b.style.display='block';
- b.innerHTML=u?'✅ Link salvo. Agora digite o SKU e clique em Buscar.':'Link apagado.'};
+ var guardou=true;
+ try{localStorage.setItem('ap_csv',u)}catch(e){guardou=false}
+ /* A confirmacao ficava so no #skuout, la em cima no item 1 — fora da tela
+    de quem esta aqui embaixo. Parecia que o botao nao fazia nada. Agora ela
+    aparece logo abaixo do proprio botao, e confere o que foi salvo. */
+ var c=document.getElementById('csvout');
+ if(c){
+  c.style.display='block';
+  if(!guardou){c.style.background='#fff7ed';c.style.borderColor='#fdba74';c.style.color='#9a3412';
+   c.innerHTML='⚠️ Não consegui guardar no navegador. Se estiver em aba anônima ou com dados de site bloqueados, o link não fica salvo.'}
+  else if(!u){c.style.background='#fff7ed';c.style.borderColor='#fdba74';c.style.color='#9a3412';
+   c.innerHTML='Link apagado. Sem ele, o Buscar na planilha não funciona.'}
+  else{
+   c.style.background='#ecfdf5';c.style.borderColor='#6ee7b7';c.style.color='#065f46';
+   var av='';
+   if(u.indexOf('script.google.com')<0&&u.indexOf('docs.google.com')<0)av+='<br>⚠️ Esse link não parece ser do Google.';
+   else if(u.indexOf('script.google.com')>=0&&u.indexOf('k=')<0)av+='<br>⚠️ Faltou a chave (<strong>&amp;k=</strong>) no fim do link.';
+   c.innerHTML='✅ <strong>Link salvo neste navegador.</strong> Agora digite o SKU lá em cima e clique em <strong>🔎 Buscar na planilha</strong>.'+av;
+  }
+ }
+ var b=document.getElementById('skuout');
+ if(b){b.style.display='block';b.innerHTML=u?'✅ Link da planilha salvo. Digite o SKU e clique em Buscar.':'Link da planilha apagado.'}
+};
 /* O anuncio gerado fica guardado em ap_last e volta sozinho quando a pagina
    reabre. Sem saber DE QUEM ele e, o painel "Pronto para publicar" continuava
    mostrando o produto anterior depois de buscar um SKU novo (foi o caso do
