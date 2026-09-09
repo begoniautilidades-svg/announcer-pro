@@ -950,6 +950,7 @@ textarea{resize:vertical;min-height:70px}.field{margin-bottom:10px}
   <button class="btn btn-g" id="copy" style="display:none">📎 Copiar tudo</button></details></div>
  <div class="card" id="canalcard" style="display:none"><h2>📋 Pronto para publicar</h2>
   <p class="hint">Uma aba por plataforma. Clique no canal, copie campo por campo e cole direto lá. É daqui que você trabalha — o texto cru inteiro fica guardado logo acima, recolhido.</p>
+  <div id="apdono" style="display:none;font-size:.85rem;font-weight:600;background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;border-radius:8px;padding:8px;margin-bottom:10px"></div>
   <div class="chips" id="cchips" style="margin-bottom:10px"></div>
   <div id="cfields"></div>
   <button class="btn btn-g" id="baixar" style="margin-top:10px">⬇️ Baixar tudo (1 arquivo por canal)</button>
@@ -1130,6 +1131,71 @@ document.getElementById('bcsv').onclick=function(){
  try{localStorage.setItem('ap_csv',u)}catch(e){}
  var b=document.getElementById('skuout');b.style.display='block';
  b.innerHTML=u?'✅ Link salvo. Agora digite o SKU e clique em Buscar.':'Link apagado.'};
+/* O anuncio gerado fica guardado em ap_last e volta sozinho quando a pagina
+   reabre. Sem saber DE QUEM ele e, o painel "Pronto para publicar" continuava
+   mostrando o produto anterior depois de buscar um SKU novo (foi o caso do
+   cabide aparecendo em cima da taca) e parecia que a busca nao tinha
+   funcionado. Agora o anuncio carrega um dono e some quando o produto muda. */
+function limparAnuncio(){
+ try{localStorage.removeItem('ap_last')}catch(e){}
+ var o=document.getElementById('out');if(o){o.textContent='';o.style.display='none'}
+ var c=document.getElementById('copy');if(c)c.style.display='none';
+ var cd=document.getElementById('crudetails');if(cd)cd.style.display='none';
+ var card=document.getElementById('canalcard');if(card)card.style.display='none';
+ var cc=document.getElementById('cchips');if(cc)cc.innerHTML='';
+ var cf=document.getElementById('cfields');if(cf)cf.innerHTML='';
+ canais=[];ULT.imagens=[];ULT.cenas=[];ULT.studio=null;
+ var r=document.getElementById('stresumo');if(r){r.style.display='none';r.innerHTML=''}
+}
+function donoAtual(){try{return localStorage.getItem('ap_dono')||''}catch(e){return ''}}
+function marcarDono(s){
+ try{if(s)localStorage.setItem('ap_dono',s);else localStorage.removeItem('ap_dono')}catch(e){}
+ var d=document.getElementById('apdono');if(!d)return;
+ if(s){d.textContent='Este anúncio é do produto: '+s;d.style.display='block'}
+ else{d.textContent='';d.style.display='none'}
+}
+/* Banco de anuncios por SKU, guardado neste navegador. Antes so existia o
+   ap_last, que era UM anuncio (o ultimo gerado) — por isso ao buscar um SKU
+   novo aparecia o produto anterior. Agora cada anuncio fica gravado com o SKU
+   dele e o Buscar na planilha devolve o anuncio inteiro daquele SKU:
+   titulo, ficha tecnica, bullets, descricao, palavras-chave, imagens e cenas. */
+var MAXANUN=40;
+function lerBanco(){try{var s=localStorage.getItem('ap_anuncios');var o=s?JSON.parse(s):null;return (o&&typeof o==='object')?o:{}}catch(e){return {}}}
+function gravarBanco(b){
+ try{localStorage.setItem('ap_anuncios',JSON.stringify(b));return true}catch(e){}
+ /* Estourou o espaco do navegador: descarta os mais antigos e tenta de novo. */
+ try{
+  var ch=Object.keys(b).sort(function(x,y){return (b[x].quando||0)-(b[y].quando||0)});
+  while(ch.length>1){
+   delete b[ch.shift()];
+   try{localStorage.setItem('ap_anuncios',JSON.stringify(b));return true}catch(e2){}
+  }
+ }catch(e3){}
+ return false;
+}
+function chaveSku(s){return String(s||'').trim().toUpperCase()}
+function salvarAnuncio(sku,d){
+ var k=chaveSku(sku);if(!k)return;
+ var b=lerBanco();d.quando=Date.now();b[k]=d;
+ var ch=Object.keys(b).sort(function(x,y){return (b[y].quando||0)-(b[x].quando||0)});
+ if(ch.length>MAXANUN){ch.slice(MAXANUN).forEach(function(x){delete b[x]})}
+ gravarBanco(b);
+}
+function buscarAnuncio(sku){var k=chaveSku(sku);if(!k)return null;var b=lerBanco();return b[k]||null}
+function dataBR(t){try{return t?new Date(t).toLocaleDateString('pt-BR'):''}catch(e){return ''}}
+function restaurarAnuncio(d,sku){
+ if(!d||!d.result)return false;
+ var k=chaveSku(sku||d.sku);
+ var o=document.getElementById('out');if(o){o.textContent=d.result;o.style.display='block'}
+ var c=document.getElementById('copy');if(c)c.style.display='block';
+ var cd=document.getElementById('crudetails');if(cd)cd.style.display='block';
+ montarChips(d.imagens||[],d.cenas||[],d.studio||null);
+ montarCanais(d.result);
+ if(d.medidas){var m=document.getElementById('med');if(m)m.value=d.medidas}
+ marcarDono(k);
+ try{localStorage.setItem('ap_last',JSON.stringify({sku:k,result:d.result,imagens:d.imagens||[],cenas:d.cenas||[],studio:d.studio||null,medidas:d.medidas||'',quando:d.quando||Date.now()}))}catch(e){}
+ return true;
+}
 document.getElementById('bsku').onclick=function(){
  var u=csvUrl(),s=v('sku'),box=document.getElementById('skuout');
  box.style.display='block';
@@ -1142,9 +1208,19 @@ document.getElementById('bsku').onclick=function(){
   skuData=j;
   if(j.nome)document.getElementById('nome').value=j.nome;
   if(j.marca)document.getElementById('marca').value=j.marca;
+  var ant=donoAtual(),novo=chaveSku(j.sku||s);
   var h='✅ <strong>'+esc(j.sku)+'</strong> — '+esc(j.nome);
   if(j.obs)h+='<br>Obs.: '+esc(j.obs);
   h+='<br><span style="color:#64748b">Nome e marca já foram preenchidos abaixo. Custo e preço não aparecem aqui: eles vivem só na planilha.</span>';
+  var guardado=buscarAnuncio(novo);
+  if(guardado){
+   restaurarAnuncio(guardado,novo);
+   h+='<br><span style="color:#047857">📋 Achei o anúncio deste SKU, gerado em <strong>'+esc(dataBR(guardado.quando))+'</strong>. Ele está aberto à direita, em <strong>Pronto para publicar</strong>, com título, título alternativo, ficha técnica, bullets, descrição e palavras-chave. Se quiser refazer do zero, clique em Gerar anúncio.</span>';
+  }else{
+   if(ant&&ant!==novo){var _m=document.getElementById('med');if(_m)_m.value=''}
+   limparAnuncio();marcarDono('');
+   h+='<br><span style="color:#b45309">📄 Ainda não existe anúncio gerado para <strong>'+esc(novo)+'</strong> neste navegador. Clique em <strong>Gerar anúncio</strong> — e depois em <strong>☁️ Arquivar no Drive</strong>, senão ele fica só aqui.</span>';
+  }
   box.innerHTML=h;
  }).catch(function(e){box.innerHTML='⚠️ Falha de rede: '+esc(e)})};
 /* ---- categoria e atributos do Mercado Livre ---- */
@@ -1302,10 +1378,10 @@ document.getElementById('go').onclick=function(){
    out.style.display='block';out.textContent=j.result||('⚠️ '+(j.error||'Erro desconhecido.'));
    var _av=document.getElementById('geraviso');
    if(_av){_av.style.display=j.aviso?'block':'none';_av.textContent=j.aviso?('\u26a0\ufe0f '+j.aviso):''}
-   if(j.result){document.getElementById('copy').style.display='block';var _cd=document.getElementById('crudetails');if(_cd)_cd.style.display='block';montarChips(j.imagens||[],j.cenas||[],j.studio||null);montarCanais(j.result);pedirMedidas(j.result);try{localStorage.setItem('ap_last',JSON.stringify({result:j.result,imagens:j.imagens||[],cenas:j.cenas||[],studio:j.studio||null}))}catch(x){}}
+   if(j.result){document.getElementById('copy').style.display='block';var _cd=document.getElementById('crudetails');if(_cd)_cd.style.display='block';montarChips(j.imagens||[],j.cenas||[],j.studio||null);montarCanais(j.result);pedirMedidas(j.result);var _dn=chaveSku(v('sku')||v('nome'));marcarDono(_dn);var _pk={sku:_dn,result:j.result,imagens:j.imagens||[],cenas:j.cenas||[],studio:j.studio||null,medidas:v('med')||''};salvarAnuncio(_dn,_pk);try{localStorage.setItem('ap_last',JSON.stringify(_pk))}catch(x){}}
  }).catch(function(e){btn.disabled=false;spinOff(false);out.style.display='block';out.textContent='⚠️ Falha de rede: '+e})};
 document.getElementById('copy').onclick=function(){navigator.clipboard.writeText(document.getElementById('out').textContent);this.textContent='✓ Copiado';var s=this;setTimeout(function(){s.textContent='📎 Copiar'},2000)};
-try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);if(_d&&_d.result){var _o=document.getElementById('out');_o.textContent=_d.result;_o.style.display='block';document.getElementById('copy').style.display='block';var _cd2=document.getElementById('crudetails');if(_cd2)_cd2.style.display='block';montarChips(_d.imagens||[],_d.cenas||[],_d.studio||null);montarCanais(_d.result)}}}catch(x){}
+try{var _l=localStorage.getItem('ap_last');if(_l){var _d=JSON.parse(_l);restaurarAnuncio(_d,_d.sku||donoAtual()||'anúncio anterior (SKU não registrado)')}}catch(x){}
 document.getElementById('gostudio').onclick=function(){
  var c=document.getElementById('ct').checked;
  var d={nome:v('nome'),marca:(c?(v('marcaReal')||''):(v('marca')||'Sayonara')),sku:v('sku'),categoria:v('cat'),medidas:v('med'),kits:(document.getElementById('kt').checked?kQtds():[]),peso:v('peso'),compat:c,compatCom:v('marcaOrig'),imagens:ULT.imagens||[],cenas:ULT.cenas||[],studio:ULT.studio||null,quando:new Date().toLocaleString('pt-BR')};
